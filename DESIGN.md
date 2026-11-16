@@ -5,7 +5,8 @@ Status: v0.1.0 ships `pk-med-records` and `pk-med-fhir`; v0.2.0 adds
 headers, §4); v0.4.0 adds the OpenID nonce (§3.1) and a vendor's retry
 guidance (§2.2); v0.4.1 adds `search_pages` (§2.2); v0.4.2 makes
 `MemoryStore` `Sync` (§3.2); v0.4.3 reads ids longer than FHIR's 64
-characters (§2.2); v0.4.4 exports the id rule as `is_id` (§2.2).
+characters (§2.2); v0.4.4 exports the id rule as `is_id` (§2.2); v0.4.5
+adds `ReferenceTarget`, what a literal reference names (§2.1).
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -339,6 +340,17 @@ else's.
 - `Resource::contained()` and `find_contained::<R>("#id")` read contained
   resources, as CARIN EOBs carry their payer and coverage.
 - `RawBundle` reads a search page keeping each entry's resource raw.
+- `ReferenceTarget::parse` (and `Reference::target`) reads what a literal
+  reference names: `Type/id` or `Type/id/_history/vid`, relative or after
+  an absolute `http(s)` base. It returns the base as written (`None` when
+  relative), the type, the id and the version. A local `#id`, a `urn:`
+  reference, a conditional `Type?…` one, and a type, id or version FHIR
+  does not allow (the id and version by `is_id`, §2.2) are `None`; so is a
+  base with an empty, `.` or `..` segment. `is_under(base)` says whether
+  it names a resource on that base, compared in `normalize_base`'s
+  spelling. Which bases a CLI follows and which types it reads stay the
+  CLI's. A DocumentReference's `attachment.url` is a URL, not a reference
+  (it may carry a query): `FhirClient::binary` takes it as it is.
 
 ### 2.2 `FhirClient`
 
@@ -833,10 +845,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.4" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.4" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.4" }   # features = ["rsa"] for §3.4
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.4" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.5" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.5" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.5" }   # features = ["rsa"] for §3.4
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.5" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -854,3 +866,4 @@ does not convert to the other.
 | v0.4.2 | v0.31.1 |
 | v0.4.3 | v0.31.1 |
 | v0.4.4 | v0.31.1 |
+| v0.4.5 | v0.31.1 |

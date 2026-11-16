@@ -751,13 +751,17 @@ fn origin_of(url: &str) -> Option<String> {
     ))
 }
 
-fn check_type(resource_type: &str) -> Result<(), CliError> {
-    let ok = resource_type
+/// A resource type's name: an ASCII capital, then ASCII letters and digits.
+pub(crate) fn is_type(resource_type: &str) -> bool {
+    resource_type
         .chars()
         .next()
         .is_some_and(|c| c.is_ascii_uppercase())
-        && resource_type.chars().all(|c| c.is_ascii_alphanumeric());
-    if ok {
+        && resource_type.chars().all(|c| c.is_ascii_alphanumeric())
+}
+
+fn check_type(resource_type: &str) -> Result<(), CliError> {
+    if is_type(resource_type) {
         Ok(())
     } else {
         Err(CliError::Usage(format!(
@@ -769,7 +773,7 @@ fn check_type(resource_type: &str) -> Result<(), CliError> {
 
 /// Whether a path's segments, before its query, include `.` or `..`, spelled
 /// out or percent-encoded (`%2e%2e`): a URL parser resolves both.
-fn has_dot_segment(path: &str) -> bool {
+pub(crate) fn has_dot_segment(path: &str) -> bool {
     path.split(['?', '#'])
         .next()
         .unwrap_or_default()

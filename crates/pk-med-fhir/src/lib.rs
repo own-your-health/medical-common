@@ -33,6 +33,9 @@
 //! assert_eq!(shot.resource_type, Immunization::TYPE);
 //! ```
 //!
+//! [`ReferenceTarget`] reads what a literal reference names (`Type/id`,
+//! relative, absolute or versioned).
+//!
 //! # Client
 //!
 //! [`FhirClient`] reads, searches (following `Bundle.link[next]` up to a page
@@ -44,6 +47,7 @@ pub mod client;
 pub mod datatypes;
 pub mod outcome;
 pub mod raw;
+mod reference;
 pub mod resources;
 #[cfg(feature = "test-util")]
 pub mod test_util;
@@ -54,6 +58,7 @@ pub use client::{
 };
 pub use datatypes::*;
 pub use raw::{minify, RawBundle, RawEntry, RawResource};
+pub use reference::ReferenceTarget;
 pub use resources::*;
 
 use pk_cli_core::CliError;

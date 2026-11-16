@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.4.5 — 2026-11-16
+
+Pins cli-common v0.31.1, as v0.4.4 does. Additions only.
+
+- `pk-med-fhir`: `ReferenceTarget::parse(reference)` and
+  `Reference::target()` read what a literal reference names: `Type/id` or
+  `Type/id/_history/vid`, relative or after an absolute `http(s)` base,
+  as `base`, `resource_type`, `id` and `version`. A local, `urn:` or
+  conditional reference, or a type, id or version FHIR does not allow, is
+  `None`. `is_under(base)` says whether it names a resource on that base
+  (DESIGN.md §2.1).
+
 ## v0.4.4 — 2026-11-16
 
 Pins cli-common v0.31.1, as v0.4.3 does. Additions only.
