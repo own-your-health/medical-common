@@ -23,16 +23,16 @@ but the program that asked.
 
 ```toml
 [dependencies]
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.6" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.6" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.6" }
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.6" }
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7" }
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7" }
 # The same cli-common tag medical-common pins (DESIGN.md §5):
 pk-cli-core = { git = "https://github.com/piekstra/cli-common", tag = "v0.31.1" }
 
 [dev-dependencies]
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.6", features = ["test-util"] }
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.6", features = ["test-util"] }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7", features = ["test-util"] }
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7", features = ["test-util"] }
 ```
 
 A pull, in brief:

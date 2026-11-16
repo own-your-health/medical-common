@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.4.7 — 2026-11-16
+
+Pins cli-common v0.31.1, as v0.4.6 does. Additions only.
+
+- `pk-med-fhir`: `ReferenceTarget::read(reference)` is `parse` with a
+  refused id kept apart. `parse` returns `None` both for what is not a
+  literal reference and for `Type/<id>` whose id `is_id` refuses, so a
+  caller filtering on it dropped the second silently. `read` returns
+  `Ok(None)` for the first and `Err(RefusedReference { resource_type, id,
+  version })` for the second, whose `Display` names the type and the id's
+  length (DESIGN.md §2.1).
+
 ## v0.4.6 — 2026-11-16
 
 Pins cli-common v0.31.1, as v0.4.5 does.

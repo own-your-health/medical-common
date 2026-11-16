@@ -1,5 +1,7 @@
 //! What a literal reference (`Reference.reference`) names.
 
+use std::fmt;
+
 use crate::client::{has_dot_segment, is_id, is_type};
 use crate::normalize_base;
 
@@ -10,6 +12,8 @@ use crate::normalize_base;
 /// [`ReferenceTarget::parse`] reads one. A local reference (`#org1`), a
 /// `urn:uuid:` or `urn:oid:` one, a conditional one (`Patient?identifier=…`),
 /// and anything whose type, id or version FHIR does not allow are `None`.
+/// [`ReferenceTarget::read`] tells the last apart, for a caller that reports
+/// such a reference rather than drop it.
 /// The id and version pass [`is_id`], so `resource_type` and `id` go into
 /// [`FhirClient::read`](crate::FhirClient::read) as they are. Whether a
 /// reference on another base is followed, and which types are read, is the
@@ -36,11 +40,39 @@ pub struct ReferenceTarget<'a> {
 
 impl<'a> ReferenceTarget<'a> {
     /// Read a literal reference, as written: no surrounding whitespace, no
-    /// trailing `/`.
+    /// trailing `/`. `None` for anything else, a refused id included
+    /// ([`Self::read`] tells that case apart).
     pub fn parse(reference: &'a str) -> Option<Self> {
+        Self::read(reference).ok().flatten()
+    }
+
+    /// As [`Self::parse`], with a reference shaped as one (a resource type,
+    /// on no base or an absolute `http(s)` one) whose id or version
+    /// [`is_id`] refuses kept apart: `Err`, with the type and the id as
+    /// written, so a caller can report it. `Ok(None)` is not a literal
+    /// reference at all (`#org1`, `urn:…`, `Patient?…`).
+    pub fn read(reference: &'a str) -> Result<Option<Self>, RefusedReference<'a>> {
         if reference.contains(['?', '#']) {
-            return None;
+            return Ok(None);
         }
+        let Some(target) = Self::split(reference) else {
+            return Ok(None);
+        };
+        if !is_type(target.resource_type) || target.base.is_some_and(|b| !is_absolute_base(b)) {
+            return Ok(None);
+        }
+        if !is_id(target.id) || !target.version.is_none_or(is_id) {
+            return Err(RefusedReference {
+                resource_type: target.resource_type,
+                id: target.id,
+                version: target.version,
+            });
+        }
+        Ok(Some(target))
+    }
+
+    /// `[base/]Type/id[/_history/vid]` by its slashes, checking nothing.
+    fn split(reference: &'a str) -> Option<Self> {
         let (head, last) = reference.rsplit_once('/')?;
         let (head, id, version) = match head.rsplit_once('/') {
             Some((resource, "_history")) => {
@@ -53,12 +85,6 @@ impl<'a> ReferenceTarget<'a> {
             Some((base, resource_type)) => (Some(base), resource_type),
             None => (None, head),
         };
-        if !is_type(resource_type) || !is_id(id) || !version.is_none_or(is_id) {
-            return None;
-        }
-        if base.is_some_and(|b| !is_absolute_base(b)) {
-            return None;
-        }
         Some(ReferenceTarget {
             base,
             resource_type,
@@ -75,6 +101,42 @@ impl<'a> ReferenceTarget<'a> {
             .is_none_or(|b| normalize_base(b) == normalize_base(base))
     }
 }
+
+/// A reference shaped as `Type/id` whose id or version [`is_id`] refuses
+/// ([`ReferenceTarget::read`]). Its `Display` names the type and the id's
+/// length, not the id.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct RefusedReference<'a> {
+    pub resource_type: &'a str,
+    /// The id as written.
+    pub id: &'a str,
+    /// The `_history` version as written, when there is one.
+    pub version: Option<&'a str>,
+}
+
+impl fmt::Display for RefusedReference<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if is_id(self.id) {
+            write!(
+                f,
+                "a reference to a {} names a version FHIR does not allow",
+                self.resource_type
+            )
+        } else {
+            write!(
+                f,
+                "a reference to a {} names an id FHIR does not allow ({} characters; ids are 1 \
+                 to {} of A-Z a-z 0-9 - ., not only dots)",
+                self.resource_type,
+                self.id.chars().count(),
+                crate::MAX_ID_LEN
+            )
+        }
+    }
+}
+
+impl std::error::Error for RefusedReference<'_> {}
 
 /// `http(s)://<host>[/<segment>…]`: printable ASCII, no empty, `.` or `..`
 /// segment (spelled out or percent-encoded).
@@ -162,6 +224,56 @@ mod tests {
         ] {
             assert_eq!(parts(reference), None, "{reference:?}");
         }
+    }
+
+    #[test]
+    fn read_keeps_a_refused_id_apart_from_what_is_not_a_reference() {
+        let over = "e".repeat(MAX_ID_LEN + 1);
+        let over_ref = format!("https://fhir.example.test/r4/Patient/{over}");
+        for (reference, resource_type, id, version) in [
+            ("Patient/p_1", "Patient", "p_1", None),
+            ("Patient/..", "Patient", "..", None),
+            ("Patient/", "Patient", "", None),
+            ("Observation/o 1", "Observation", "o 1", None),
+            (over_ref.as_str(), "Patient", over.as_str(), None),
+            ("Patient/p1/_history/v_1", "Patient", "p1", Some("v_1")),
+        ] {
+            let refused = ReferenceTarget::read(reference).unwrap_err();
+            assert_eq!(
+                (refused.resource_type, refused.id, refused.version),
+                (resource_type, id, version),
+                "{reference}"
+            );
+            assert_eq!(ReferenceTarget::parse(reference), None, "{reference}");
+        }
+        for reference in [
+            "#org1",
+            "urn:uuid:5e7a2c1e-0000-4000-8000-000000000001",
+            "Patient?identifier=x",
+            "folder/Patient/p_1",
+            "ftp://fhir.example.test/Patient/p_1",
+            "patient/p_1",
+            "Patient",
+        ] {
+            assert_eq!(ReferenceTarget::read(reference), Ok(None), "{reference}");
+        }
+        assert_eq!(
+            ReferenceTarget::read("Patient/p1").unwrap().map(|t| t.id),
+            Some("p1")
+        );
+    }
+
+    #[test]
+    fn a_refused_reference_names_its_type_and_not_its_id() {
+        let long = format!("DocumentReference/{}", "x".repeat(300));
+        let text = ReferenceTarget::read(&long).unwrap_err().to_string();
+        assert!(text.contains("DocumentReference"), "{text}");
+        assert!(text.contains("300 characters"), "{text}");
+        assert!(!text.contains("xxxx"), "{text}");
+        let text = ReferenceTarget::read("Patient/p1/_history/v_1")
+            .unwrap_err()
+            .to_string();
+        assert!(text.contains("version"), "{text}");
     }
 
     #[test]

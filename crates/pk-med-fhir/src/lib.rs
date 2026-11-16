@@ -58,7 +58,7 @@ pub use client::{
 };
 pub use datatypes::*;
 pub use raw::{minify, RawBundle, RawEntry, RawResource};
-pub use reference::ReferenceTarget;
+pub use reference::{ReferenceTarget, RefusedReference};
 pub use resources::*;
 
 use pk_cli_core::CliError;
