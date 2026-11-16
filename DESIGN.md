@@ -167,12 +167,24 @@ other:
 | `no_file` | the resource names a file the source did not serve |
 | `verify_failed` | a file failed its check (`documents/v1`'s `verify_download`) |
 | `upstream` | the source failed: a 5xx, a 429 not waited out |
-| `forbidden` | the source refused access: a 403, a scope not granted, or a search's answer said it left results out (an issue `suppressed`, `SearchResult::withheld`, §2.2); the results it did send are kept |
+| `forbidden` | the source refused access: a 403, a scope not granted, or a search's answer said it left results out (an issue `suppressed`, `SearchResult::withheld`, §2.2) |
 | `not_found` | a 404 or 410 for something a resource named |
 | `too_large` | over the line limit |
 | `unsupported` | the source does not offer the search or the type |
 | `page_cap` | pages were left at the page cap |
 | `invalid_reference` | a resource names another by a reference FHIR does not allow (`ReferenceTarget::read`'s `Err`, §2.1): the source's own data, which asking again does not change |
+
+A search answered with results and an issue saying it left some out keeps
+those results, and the stream carries one `forbidden` skip per type and
+distinct withheld line, however many searches carried it. What a server
+withholds is part of a type's data (at Epic, a sub-resource such as a
+Condition category), not one search, so the skip sets `resource_type`,
+leaves `id` and `search` unset, and gives the line as `reason`, which may
+also say which searches carried it (`Skip::resource(type, "",
+skip::FORBIDDEN, line)`). `search` stays for a search left out or left
+unfinished. A reader takes a `forbidden` skip with a `resource_type` and
+neither `id` nor `search` as resources of that type the source did not
+serve; those it served are in the stream.
 
 **Failure.** Nothing goes to stdout before the header, so a failure before
 the first request (no sign-in, a bad argument) is an ordinary error: the

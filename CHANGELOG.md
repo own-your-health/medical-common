@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- DESIGN.md §1.4: the shape of the `forbidden` skip for withheld results.
+  There is one per type and distinct withheld line in a stream, with
+  `resource_type` set and `id` and `search` unset, because what a server
+  withholds is part of a type's data rather than one search; `search`
+  stays for a search left out or left unfinished. No code change.
+
 ## v0.4.9 — 2026-11-16
 
 Pins cli-common v0.31.1, as v0.4.8 does. Additions only.
