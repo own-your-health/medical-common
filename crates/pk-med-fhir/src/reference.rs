@@ -12,8 +12,9 @@ use crate::normalize_base;
 /// [`ReferenceTarget::parse`] reads one. A local reference (`#org1`), a
 /// `urn:uuid:` or `urn:oid:` one, a conditional one (`Patient?identifier=…`),
 /// and anything whose type, id or version FHIR does not allow are `None`.
-/// [`ReferenceTarget::read`] tells the last apart, for a caller that reports
-/// such a reference rather than drop it.
+/// [`ReferenceTarget::read`] tells a refused id or version apart (`Err`), for
+/// a caller that reports such a reference rather than drop it; everything
+/// else `parse` refuses, a disallowed type included, is `Ok(None)` there.
 /// The id and version pass [`is_id`], so `resource_type` and `id` go into
 /// [`FhirClient::read`](crate::FhirClient::read) as they are. Whether a
 /// reference on another base is followed, and which types are read, is the
@@ -103,9 +104,11 @@ impl<'a> ReferenceTarget<'a> {
 }
 
 /// A reference shaped as `Type/id` whose id or version [`is_id`] refuses
-/// ([`ReferenceTarget::read`]). Its `Display` names the type and the id's
-/// length, not the id.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// ([`ReferenceTarget::read`]). Its `Display` and `Debug` name the type and
+/// the id's length, never the id or the version: an error is logged, and a
+/// patient's id can be an identifier. The fields hold both for a caller that
+/// needs them.
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct RefusedReference<'a> {
     pub resource_type: &'a str,
@@ -133,6 +136,16 @@ impl fmt::Display for RefusedReference<'_> {
                 crate::MAX_ID_LEN
             )
         }
+    }
+}
+
+impl fmt::Debug for RefusedReference<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RefusedReference")
+            .field("resource_type", &self.resource_type)
+            .field("id_chars", &self.id.chars().count())
+            .field("has_version", &self.version.is_some())
+            .finish()
     }
 }
 
@@ -274,6 +287,11 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(text.contains("version"), "{text}");
+        for reference in ["Patient/secret_1", "Patient/p1/_history/secret_2"] {
+            let debug = format!("{:?}", ReferenceTarget::read(reference));
+            assert!(debug.contains("Patient"), "{debug}");
+            assert!(!debug.contains("secret"), "{debug}");
+        }
     }
 
     #[test]

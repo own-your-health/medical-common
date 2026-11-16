@@ -348,14 +348,17 @@ else's.
   relative), the type, the id and the version. A local `#id`, a `urn:`
   reference, a conditional `Type?…` one, and a type, id or version FHIR
   does not allow (the id and version by `is_id`, §2.2) are `None`; so is a
-  base with an empty, `.` or `..` segment. `ReferenceTarget::read` keeps
-  the refused id apart, for a CLI that reports a reference it cannot follow
-  rather than drop it: `Ok(Some(target))`, `Ok(None)` for what is not a
-  literal reference, and `Err(RefusedReference { resource_type, id,
-  version })` for one shaped as `Type/id` whose id or version `is_id`
-  refuses. Its `Display` names the type and the id's length, not the id. `is_under(base)` says whether
+  base with an empty, `.` or `..` segment. `is_under(base)` says whether
   it names a resource on that base, compared in `normalize_base`'s
-  spelling. Which bases a CLI follows and which types it reads stay the
+  spelling.
+- `ReferenceTarget::read` keeps a refused id apart, for a CLI that reports
+  a reference it cannot follow rather than drop it: `Ok(Some(target))` as
+  `parse`, `Err(RefusedReference { resource_type, id, version })` for one
+  shaped as `[base/]Type/id` whose id or version `is_id` refuses, and
+  `Ok(None)` for everything else `parse` refuses, a disallowed type
+  included. Its `Display` and `Debug` name the type and the id's length,
+  never the id or the version (a patient's id can be an identifier); the
+  fields hold both. Which bases a CLI follows and which types it reads stay the
   CLI's. A DocumentReference's `attachment.url` is a URL, not a reference
   (it may carry a query): `FhirClient::binary` takes it as it is.
 
