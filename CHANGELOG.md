@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.4.4 — 2026-11-16
+
+Pins cli-common v0.31.1, as v0.4.3 does. Additions only.
+
+- `pk-med-fhir`: `is_id(id)` is the rule `FhirClient::read` and
+  `FhirClient::binary` apply to an id: 1 to `MAX_ID_LEN` of
+  `A-Z a-z 0-9 - .`, not only dots. Both still refuse any other id as a
+  usage error (exit 2); a CLI holding an id from a server's response checks
+  it with `is_id` first and decides what a refusal means there.
+
 ## v0.4.3 — 2026-11-16
 
 Pins cli-common v0.31.1, as v0.4.2 does.

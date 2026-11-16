@@ -5,7 +5,7 @@ Status: v0.1.0 ships `pk-med-records` and `pk-med-fhir`; v0.2.0 adds
 headers, §4); v0.4.0 adds the OpenID nonce (§3.1) and a vendor's retry
 guidance (§2.2); v0.4.1 adds `search_pages` (§2.2); v0.4.2 makes
 `MemoryStore` `Sync` (§3.2); v0.4.3 reads ids longer than FHIR's 64
-characters (§2.2).
+characters (§2.2); v0.4.4 exports the id rule as `is_id` (§2.2).
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -383,7 +383,10 @@ code runs over `pk_cli_http::BlockingTransport` (driven with
   `MAX_ID_LEN` (256) of `A-Z a-z 0-9 - .`, and not only dots. FHIR R4
   allows 64, but an Epic app registered with "Use Unconstrained FHIR IDs",
   Epic's default, gets longer ones (80 and more), and Epic publishes no
-  bound. A path or a reference with a `.` or `..` segment, spelled out or percent-encoded, is
+  bound. `is_id` is that rule. A refused id is a usage error, the caller's
+  input; a CLI holding an id from a server's response checks it with
+  `is_id` first and decides what a refusal means there (an item skipped,
+  exit 5). A path or a reference with a `.` or `..` segment, spelled out or percent-encoded, is
   refused (exit 2): a URL parser would climb out of the base.
 - A 429, a 5xx, an edge's HTML 403, or a connection that failed is asked
   again under `RetryPolicy` (3 requests, 1 s then 2 s apart, or the
@@ -830,10 +833,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.3" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.3" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.3" }   # features = ["rsa"] for §3.4
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.3" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.4" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.4" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.4" }   # features = ["rsa"] for §3.4
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.4" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -850,3 +853,4 @@ does not convert to the other.
 | v0.4.1 | v0.31.1 |
 | v0.4.2 | v0.31.1 |
 | v0.4.3 | v0.31.1 |
+| v0.4.4 | v0.31.1 |

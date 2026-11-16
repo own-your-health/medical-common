@@ -786,15 +786,24 @@ fn has_dot_segment(path: &str) -> bool {
 /// no bound.
 pub const MAX_ID_LEN: usize = 256;
 
-/// A FHIR `id` as it goes into a URL path: 1 to [`MAX_ID_LEN`] of
-/// `A-Z a-z 0-9 - .`, not only dots.
-fn check_id(id: &str) -> Result<(), CliError> {
-    let ok = (1..=MAX_ID_LEN).contains(&id.len())
+/// Whether [`FhirClient::read`] and [`FhirClient::binary`] accept `id`: 1 to
+/// [`MAX_ID_LEN`] of `A-Z a-z 0-9 - .`, not only dots, so it can name
+/// neither another path segment nor `.` or `..`.
+///
+/// Both refuse any other id with [`CliError::Usage`] (exit 2) before a
+/// request, taking it for the caller's input. A caller holding an id from a
+/// server's response checks it here first and decides what a refusal means
+/// there: an item skipped, or an upstream error.
+pub fn is_id(id: &str) -> bool {
+    (1..=MAX_ID_LEN).contains(&id.len())
         && !id.chars().all(|c| c == '.')
         && id
             .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.');
-    if ok {
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.')
+}
+
+fn check_id(id: &str) -> Result<(), CliError> {
+    if is_id(id) {
         Ok(())
     } else {
         Err(CliError::Usage(format!(
@@ -1098,6 +1107,32 @@ mod tests {
         }
         assert!(c.transport().seen.borrow().is_empty(), "nothing was sent");
         assert!(check_id("a..b").is_ok(), "dots inside an id are allowed");
+    }
+
+    #[test]
+    fn is_id_is_the_rule_read_and_binary_apply() {
+        let longest = "e".repeat(MAX_ID_LEN);
+        let over = "e".repeat(MAX_ID_LEN + 1);
+        for (id, ok) in [
+            ("p1", true),
+            ("a..b", true),
+            ("A-z.0", true),
+            (longest.as_str(), true),
+            ("", false),
+            (".", false),
+            ("..", false),
+            ("...", false),
+            ("p/1", false),
+            ("p%2F1", false),
+            ("p 1", false),
+            ("p_1", false),
+            ("p1?x", false),
+            ("p\u{e9}", false),
+            (over.as_str(), false),
+        ] {
+            assert_eq!(is_id(id), ok, "{id:?}");
+            assert_eq!(check_id(id).is_ok(), ok, "{id:?}");
+        }
     }
 
     #[test]
