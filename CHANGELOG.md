@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.4.8 — 2026-11-16
+
+Pins cli-common v0.31.1, as v0.4.7 does. Additions only.
+
+- `pk-med-fhir`: `RefusedReference` carries the reference's `base` (as
+  `ReferenceTarget::base`: as written, `None` when relative) and has
+  `is_under(base)`, so a CLI can tell a refused reference on its own
+  server from one elsewhere without splitting it again (DESIGN.md §2.1).
+  Its `Debug` shows the base too, still never the id or the version.
+- `pk-med-records`: `skip::INVALID_REFERENCE` (`"invalid_reference"`), the
+  code for a resource left out because another names it by a reference FHIR
+  does not allow: the source's own data, not a failure worth retrying as
+  `upstream` would say. Skip codes are an open set, so a reader that does
+  not know it treats it as any other skip (DESIGN.md §1.4).
+
 ## v0.4.7 — 2026-11-16
 
 Pins cli-common v0.31.1, as v0.4.6 does. Additions only.

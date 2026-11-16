@@ -64,6 +64,7 @@ impl<'a> ReferenceTarget<'a> {
         }
         if !is_id(target.id) || !target.version.is_none_or(is_id) {
             return Err(RefusedReference {
+                base: target.base,
                 resource_type: target.resource_type,
                 id: target.id,
                 version: target.version,
@@ -98,24 +99,39 @@ impl<'a> ReferenceTarget<'a> {
     /// always does, an absolute one when its base is `base` in
     /// [`normalize_base`]'s spelling.
     pub fn is_under(&self, base: &str) -> bool {
-        self.base
-            .is_none_or(|b| normalize_base(b) == normalize_base(base))
+        is_under(self.base, base)
     }
 }
 
+fn is_under(own: Option<&str>, base: &str) -> bool {
+    own.is_none_or(|b| normalize_base(b) == normalize_base(base))
+}
+
 /// A reference shaped as `Type/id` whose id or version [`is_id`] refuses
-/// ([`ReferenceTarget::read`]). Its `Display` and `Debug` name the type and
-/// the id's length, never the id or the version: an error is logged, and a
-/// patient's id can be an identifier. The fields hold both for a caller that
-/// needs them.
+/// ([`ReferenceTarget::read`]). Its `Display` names the type and the id's
+/// length; its `Debug` also shows the base (a server URL) and whether a
+/// version is present. Neither shows the id or the version: an error is
+/// logged, and a patient's id can be an identifier. The fields hold both for
+/// a caller that needs them.
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct RefusedReference<'a> {
+    /// The base of an absolute reference as written, as
+    /// [`ReferenceTarget::base`]; `None` for a relative reference.
+    pub base: Option<&'a str>,
     pub resource_type: &'a str,
     /// The id as written.
     pub id: &'a str,
     /// The `_history` version as written, when there is one.
     pub version: Option<&'a str>,
+}
+
+impl RefusedReference<'_> {
+    /// Whether the reference names a resource on `base`, as
+    /// [`ReferenceTarget::is_under`].
+    pub fn is_under(&self, base: &str) -> bool {
+        is_under(self.base, base)
+    }
 }
 
 impl fmt::Display for RefusedReference<'_> {
@@ -142,6 +158,7 @@ impl fmt::Display for RefusedReference<'_> {
 impl fmt::Debug for RefusedReference<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RefusedReference")
+            .field("base", &self.base)
             .field("resource_type", &self.resource_type)
             .field("id_chars", &self.id.chars().count())
             .field("has_version", &self.version.is_some())
@@ -274,6 +291,19 @@ mod tests {
             ReferenceTarget::read("Patient/p1").unwrap().map(|t| t.id),
             Some("p1")
         );
+    }
+
+    #[test]
+    fn a_refused_reference_keeps_its_base() {
+        let base = "https://fhir.example.test/r4";
+        let relative = ReferenceTarget::read("Patient/p_1").unwrap_err();
+        assert_eq!(relative.base, None);
+        assert!(relative.is_under(base));
+        let own = ReferenceTarget::read("HTTPS://FHIR.example.test/r4/Patient/p_1").unwrap_err();
+        assert_eq!(own.base, Some("HTTPS://FHIR.example.test/r4"));
+        assert!(own.is_under(&format!("{base}/")));
+        let other = ReferenceTarget::read("https://other.example.test/r4/Patient/p_1").unwrap_err();
+        assert!(!other.is_under(base));
     }
 
     #[test]

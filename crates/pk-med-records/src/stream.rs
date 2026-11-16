@@ -44,6 +44,10 @@ pub mod skip {
     pub const UNSUPPORTED: &str = "unsupported";
     /// Pages were left at the page cap.
     pub const PAGE_CAP: &str = "page_cap";
+    /// A resource names another by a reference FHIR does not allow
+    /// (`pk_med_fhir::ReferenceTarget::read`'s `Err`): the source's own data,
+    /// which asking again does not change, unlike [`UPSTREAM`].
+    pub const INVALID_REFERENCE: &str = "invalid_reference";
 }
 
 /// The program that wrote the stream.

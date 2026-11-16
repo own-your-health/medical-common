@@ -8,7 +8,9 @@ guidance (§2.2); v0.4.1 adds `search_pages` (§2.2); v0.4.2 makes
 characters (§2.2); v0.4.4 exports the id rule as `is_id` (§2.2); v0.4.5
 adds `ReferenceTarget`, what a literal reference names (§2.1); v0.4.6
 keeps pk-med-smart's remedies apart from its messages (§3); v0.4.7 adds
-`ReferenceTarget::read`, which keeps a refused id apart (§2.1).
+`ReferenceTarget::read`, which keeps a refused id apart (§2.1); v0.4.8
+gives a refused reference its base and `is_under` (§2.1) and adds the
+`invalid_reference` skip code (§1.4).
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -166,6 +168,7 @@ other:
 | `too_large` | over the line limit |
 | `unsupported` | the source does not offer the search or the type |
 | `page_cap` | pages were left at the page cap |
+| `invalid_reference` | a resource names another by a reference FHIR does not allow (`ReferenceTarget::read`'s `Err`, §2.1): the source's own data, which asking again does not change |
 
 **Failure.** Nothing goes to stdout before the header, so a failure before
 the first request (no sign-in, a bad argument) is an ordinary error: the
@@ -353,12 +356,15 @@ else's.
   spelling.
 - `ReferenceTarget::read` keeps a refused id apart, for a CLI that reports
   a reference it cannot follow rather than drop it: `Ok(Some(target))` as
-  `parse`, `Err(RefusedReference { resource_type, id, version })` for one
-  shaped as `[base/]Type/id` whose id or version `is_id` refuses, and
-  `Ok(None)` for everything else `parse` refuses, a disallowed type
-  included. Its `Display` and `Debug` name the type and the id's length,
-  never the id or the version (a patient's id can be an identifier); the
-  fields hold both. Which bases a CLI follows and which types it reads stay the
+  `parse`, `Err(RefusedReference { base, resource_type, id, version })`
+  for one shaped as `[base/]Type/id` whose id or version `is_id` refuses,
+  and `Ok(None)` for everything else `parse` refuses, a disallowed type
+  included. A refused reference has `is_under(base)` too, so a CLI reports
+  only those on its own server. Its `Display` names the type and the id's
+  length; its `Debug` also shows the base (a server URL) and whether a
+  version is present. Neither shows the id or the version (a patient's id
+  can be an identifier); the fields hold both. A stream reports one it
+  leaves out with `skip::INVALID_REFERENCE` (§1.4). Which bases a CLI follows and which types it reads stay the
   CLI's. A DocumentReference's `attachment.url` is a URL, not a reference
   (it may carry a query): `FhirClient::binary` takes it as it is.
 
@@ -870,10 +876,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7" }   # features = ["rsa"] for §3.4
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.7" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.8" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.8" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.8" }   # features = ["rsa"] for §3.4
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.8" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -894,3 +900,4 @@ does not convert to the other.
 | v0.4.5 | v0.31.1 |
 | v0.4.6 | v0.31.1 |
 | v0.4.7 | v0.31.1 |
+| v0.4.8 | v0.31.1 |
