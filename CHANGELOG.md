@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.8 — 2026-11-16
+
+Pins cli-common v0.31.1, as v0.4.7 does. Additions only.
+
+- `pk-med-fhir`: `RefusedReference` carries the reference's `base` (as
+  `ReferenceTarget::base`: as written, `None` when relative) and has
+  `is_under(base)`, so a CLI can tell a refused reference on its own
+  server from one elsewhere without splitting it again (DESIGN.md §2.1).
+
 ## v0.4.7 — 2026-11-16
 
 Pins cli-common v0.31.1, as v0.4.6 does. Additions only.
