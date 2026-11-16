@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.4.3 — 2026-11-16
+
+Pins cli-common v0.31.1, as v0.4.2 does.
+
+- `pk-med-fhir`: `FhirClient::read` and `FhirClient::binary` accept an id
+  of up to `MAX_ID_LEN`, 256 characters, where they refused one over FHIR
+  R4's 64. An Epic app registered with "Use Unconstrained FHIR IDs",
+  Epic's default, gets longer ids (80 and more). The character set
+  (`A-Z a-z 0-9 - .`) and the refusal of an id of only dots are unchanged.
+
 ## v0.4.2 — 2026-11-12
 
 Pins cli-common v0.31.1, as v0.4.1 does.
