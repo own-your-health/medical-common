@@ -7,6 +7,10 @@
   `resource_type` set and `id` and `search` unset, because what a server
   withholds is part of a type's data rather than one search; `search`
   stays for a search left out or left unfinished. No code change.
+- DESIGN.md §1.7: a `DocumentReference` search with withheld results keeps
+  what it served, and `documents list` and `documents download --all` warn
+  on stderr once per distinct withheld line, since `documents/v1` has no
+  field for it.
 
 ## v0.4.9 — 2026-11-16
 

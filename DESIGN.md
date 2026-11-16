@@ -303,6 +303,12 @@ works unchanged:
   through `verify_download` before writing, as `documents/v1` requires.
   A file that fails is skipped with `verify_failed`, in a batch and in a
   stream alike.
+- A `DocumentReference` search whose answer says it left results out
+  (`SearchResult::withheld`, §2.2) keeps what it served, and `documents
+  list` and `documents download --all` warn on stderr, once per distinct
+  withheld line. `documents/v1` has no field for it (`skipped` needs a
+  document id), so `--json` output is the profile's own; a CLI may add an
+  optional field of its own, which a `documents/v1` reader ignores.
 - The records stream carries the same `Binary` resources verbatim, so the
   store does not call `documents download` for a pulled patient; the two
   routes agree on ids, and a store matches a filed document to its
