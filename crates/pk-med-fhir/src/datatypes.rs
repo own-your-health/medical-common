@@ -82,6 +82,16 @@ pub struct Reference {
     pub extra: Map<String, Value>,
 }
 
+impl Reference {
+    /// What [`Reference::reference`] names, when it is a literal reference
+    /// ([`crate::ReferenceTarget::parse`]).
+    pub fn target(&self) -> Option<crate::ReferenceTarget<'_>> {
+        self.reference
+            .as_deref()
+            .and_then(crate::ReferenceTarget::parse)
+    }
+}
+
 /// A business identifier (an MRN, a member id).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
