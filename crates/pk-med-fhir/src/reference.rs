@@ -108,10 +108,11 @@ fn is_under(own: Option<&str>, base: &str) -> bool {
 }
 
 /// A reference shaped as `Type/id` whose id or version [`is_id`] refuses
-/// ([`ReferenceTarget::read`]). Its `Display` and `Debug` name the type and
-/// the id's length, never the id or the version: an error is logged, and a
-/// patient's id can be an identifier. The fields hold both for a caller that
-/// needs them.
+/// ([`ReferenceTarget::read`]). Its `Display` names the type and the id's
+/// length; its `Debug` also shows the base (a server URL) and whether a
+/// version is present. Neither shows the id or the version: an error is
+/// logged, and a patient's id can be an identifier. The fields hold both for
+/// a caller that needs them.
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct RefusedReference<'a> {
