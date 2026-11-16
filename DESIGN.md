@@ -303,6 +303,19 @@ works unchanged:
   through `verify_download` before writing, as `documents/v1` requires.
   A file that fails is skipped with `verify_failed`, in a batch and in a
   stream alike.
+- A `DocumentReference` search whose answer says it left results out
+  (`SearchResult::withheld`, §2.2) keeps what it served. `documents list`
+  and `documents download --all` warn on stderr, once per distinct withheld
+  line, and their `--json` output (`document-list/v1`,
+  `document-download-batch/v1`) carries `withheld`: the §1.4 skips for it
+  (`{resource_type, reason, code: "forbidden"}`, one per type and distinct
+  line), omitted when empty. `documents/v1` has no field for this
+  (`skipped` needs a document id), so `withheld` is this profile's
+  extension, and a `documents/v1` reader that does not know it ignores it.
+  When `documents/v1` gains a shared field for what a source left out, a
+  CLI writes it beside `withheld` for the rest of `/v1`, and a reader
+  prefers the shared field when present; `withheld` goes only with a schema
+  bump (§1.9).
 - The records stream carries the same `Binary` resources verbatim, so the
   store does not call `documents download` for a pulled patient; the two
   routes agree on ids, and a store matches a filed document to its
