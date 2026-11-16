@@ -312,8 +312,10 @@ works unchanged:
   line), omitted when empty. `documents/v1` has no field for this
   (`skipped` needs a document id), so `withheld` is this profile's
   extension, and a `documents/v1` reader that does not know it ignores it.
-  It holds until `documents/v1` gains a shared field for what a source left
-  out, and then gives way to that field.
+  When `documents/v1` gains a shared field for what a source left out, a
+  CLI writes it beside `withheld` for the rest of `/v1`, and a reader
+  prefers the shared field when present; `withheld` goes only with a schema
+  bump (§1.9).
 - The records stream carries the same `Binary` resources verbatim, so the
   store does not call `documents download` for a pulled patient; the two
   routes agree on ids, and a store matches a filed document to its

@@ -11,8 +11,8 @@
   what it served. `documents list` and `documents download --all` warn on
   stderr once per distinct withheld line, and their `--json` output carries
   an optional `withheld` array of the §1.4 skips, since `documents/v1` has
-  no field for it. The extension holds until `documents/v1` gains a shared
-  field.
+  no field for it. Once `documents/v1` gains a shared field, a CLI writes
+  both for the rest of `/v1`.
 
 ## v0.4.9 — 2026-11-16
 
