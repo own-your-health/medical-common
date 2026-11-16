@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.4.9 — 2026-11-16
+
+Pins cli-common v0.31.1, as v0.4.8 does. Additions only.
+
+- `pk-med-fhir`: `OperationOutcome::withheld()` reads what a server says
+  it left out of its answer: one line per issue coded `suppressed`,
+  whatever its severity, as its `diagnostics`, else `details.text`, else
+  the first coding's display, printable. Epic answers a search touching a
+  sub-resource the client may not read with the rest of the results and
+  such a warning, which `outcomes` carried with nothing reading it.
+  `SearchResult::withheld()` and `SearchPage::withheld()` give each
+  distinct line across their outcomes (DESIGN.md §2.2).
+- `pk-med-fhir` `test-util`: `MockServer::withhold(type, text)` adds that
+  warning, in Epic's shape, to every page of the type's searches
+  (`fixtures/operation-outcome-suppressed.json`).
+- DESIGN.md: a search's withheld results are a `forbidden` skip, the
+  results it did send kept (§1.4); a type the source searches only by
+  `_id`, as Epic's Specimen and Media, is read by reference (§1.1).
+
 ## v0.4.8 — 2026-11-16
 
 Pins cli-common v0.31.1, as v0.4.7 does. Additions only.

@@ -10,7 +10,8 @@ adds `ReferenceTarget`, what a literal reference names (§2.1); v0.4.6
 keeps pk-med-smart's remedies apart from its messages (§3); v0.4.7 adds
 `ReferenceTarget::read`, which keeps a refused id apart (§2.1); v0.4.8
 gives a refused reference its base and `is_under` (§2.1) and adds the
-`invalid_reference` skip code (§1.4).
+`invalid_reference` skip code (§1.4); v0.4.9 reads what a search's answer
+says it left out (`withheld`, §2.2).
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -52,6 +53,9 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
   resource the source returns. (At Epic, for example, `date` is documented
   on Observation, DiagnosticReport, DocumentReference, Encounter,
   Immunization and Procedure.)
+- A type the source searches only by `_id` is read by reference from the
+  resources that name it, not searched by patient. (At Epic, Specimen and
+  Media take only `_id`; a `patient` or `subject` search answers 400.)
 - An insurer CLI's export carries `Coverage` and `ExplanationOfBenefit`
   (CARIN Blue Button). A CLI whose source is not a FHIR server (a member
   site, downloaded files) maps what it reads into those FHIR shapes and sets
@@ -163,7 +167,7 @@ other:
 | `no_file` | the resource names a file the source did not serve |
 | `verify_failed` | a file failed its check (`documents/v1`'s `verify_download`) |
 | `upstream` | the source failed: a 5xx, a 429 not waited out |
-| `forbidden` | the source refused access: a 403, a scope not granted |
+| `forbidden` | the source refused access: a 403, a scope not granted, or a search's answer said it left results out (an issue `suppressed`, `SearchResult::withheld`, §2.2); the results it did send are kept |
 | `not_found` | a 404 or 410 for something a resource named |
 | `too_large` | over the line limit |
 | `unsupported` | the source does not offer the search or the type |
@@ -393,6 +397,16 @@ code runs over `pk_cli_http::BlockingTransport` (driven with
   rest. An error from `on_page` (a full disc) ends it with no further
   request. `search` is `search_pages` collecting every page, so an error on
   any page there is the whole search's.
+- A server can answer a search with some of its results and an outcome
+  saying it left the rest out: an issue coded `suppressed`, which Epic
+  sends as a warning naming the sub-resource the client may not read, on
+  every search that touches it. That is a 2xx and no error.
+  `OperationOutcome::withheld()` gives one line per such issue, whatever
+  its severity: its `diagnostics`, else `details.text`, else the first
+  coding's display, printable and cut to 200 characters.
+  `SearchResult::withheld()` and `SearchPage::withheld()` give each
+  distinct line across their outcomes, so a warning repeated on every page
+  is one line.
 - The bearer is fixed (`bearer(Secret)`) or comes from a source
   (`bearer_with`), for a run longer than the token lasts. A source is
   called before every request, a retry included, with no argument. After
@@ -485,7 +499,9 @@ rotating refresh, JWT bearer, an ID token for `openid` carrying the
 authorization's `nonce`; `id_token_nonce_next` gives the next one another
 or none) and registration. `Fault` makes chosen
 requests fail: a 429 with `Retry-After`, an OperationOutcome error, a 401,
-a 503. Every value in it is synthetic: `crates/pk-med-fhir/fixtures/README.md`
+a 503. `withhold(type, text)` adds a `suppressed` warning with that text
+to every page of the type's searches, in Epic's shape, its results served
+as before. Every value in it is synthetic: `crates/pk-med-fhir/fixtures/README.md`
 lists the dummy shapes, and a test checks them positively.
 
 `pk_med_records::test_util::write_synthetic_stream` writes that patient as
@@ -876,10 +892,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.8" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.8" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.8" }   # features = ["rsa"] for §3.4
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.8" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.9" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.9" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.9" }   # features = ["rsa"] for §3.4
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.9" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -901,3 +917,4 @@ does not convert to the other.
 | v0.4.6 | v0.31.1 |
 | v0.4.7 | v0.31.1 |
 | v0.4.8 | v0.31.1 |
+| v0.4.9 | v0.31.1 |

@@ -40,8 +40,9 @@
 //!
 //! [`FhirClient`] reads, searches (following `Bundle.link[next]` up to a page
 //! cap), fetches `Binary` as FHIR JSON, and maps HTTP status and
-//! OperationOutcome onto the family's exit codes ([`outcome`]). It sends its
-//! bearer only to the base's own origin.
+//! OperationOutcome onto the family's exit codes ([`outcome`]). A search's
+//! [`SearchResult::withheld`] says what the server left out of a 2xx answer.
+//! It sends its bearer only to the base's own origin.
 
 pub mod client;
 pub mod datatypes;

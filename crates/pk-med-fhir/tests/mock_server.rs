@@ -61,6 +61,47 @@ fn a_search_reads_every_page_and_keeps_decimals() {
 }
 
 #[test]
+fn what_a_search_withholds_is_read_once_beside_its_results() {
+    let mock = MockServer::start();
+    mock.withhold(
+        "Observation",
+        "Client not authorized for Observation - Synthetic A",
+    );
+    mock.withhold(
+        "Observation",
+        "Client not authorized for Observation - Synthetic B",
+    );
+    mock.withhold(
+        "Condition",
+        "Client not authorized for Condition - Synthetic C",
+    );
+    let c = client(&mock);
+    let r = block_on(c.search("Observation", &[("patient", PATIENT_ID.into())])).unwrap();
+    assert_eq!((r.resources.len(), r.pages), (3, 2));
+    assert_eq!(r.outcomes.len(), 4);
+    assert_eq!(
+        r.withheld(),
+        [
+            "Client not authorized for Observation - Synthetic A",
+            "Client not authorized for Observation - Synthetic B"
+        ]
+    );
+
+    let mut pages = Vec::new();
+    block_on(
+        c.search_pages("Observation", &[("patient", PATIENT_ID.into())], |page| {
+            pages.push((page.resources.len(), page.withheld().len()));
+            Ok(())
+        }),
+    )
+    .unwrap();
+    assert_eq!(pages, [(2, 2), (1, 2)]);
+
+    let unwithheld = block_on(c.search("Encounter", &[("patient", PATIENT_ID.into())])).unwrap();
+    assert!(unwithheld.withheld().is_empty());
+}
+
+#[test]
 fn the_page_cap_leaves_the_rest_and_says_so() {
     let mock = MockServer::start();
     mock.page_size(1);

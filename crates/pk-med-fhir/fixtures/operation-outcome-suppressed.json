@@ -1,0 +1,18 @@
+{
+  "resourceType": "OperationOutcome",
+  "issue": [
+    {
+      "severity": "warning",
+      "code": "suppressed",
+      "details": {
+        "text": "The authenticated client's search request applies to a sub-resource that the client is not authorized for. Results of this sub-type will not be returned."
+      },
+      "diagnostics": "Client not authorized for Observation - Synthetic Sub-resource"
+    },
+    {
+      "severity": "information",
+      "code": "informational",
+      "diagnostics": "Synthetic note"
+    }
+  ]
+}

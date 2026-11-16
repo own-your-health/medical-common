@@ -236,6 +236,34 @@ pub struct SearchPage {
     pub total: Option<u64>,
 }
 
+impl SearchResult {
+    /// What the server said it left out of the results, each distinct line of
+    /// [`OperationOutcome::withheld`] across every page's outcomes, first
+    /// seen first: a server that repeats the warning on every page gives one
+    /// line.
+    pub fn withheld(&self) -> Vec<String> {
+        distinct_withheld(&self.outcomes)
+    }
+}
+
+impl SearchPage {
+    /// What the server said it left out, each distinct line of
+    /// [`OperationOutcome::withheld`] across this page's outcomes.
+    pub fn withheld(&self) -> Vec<String> {
+        distinct_withheld(&self.outcomes)
+    }
+}
+
+fn distinct_withheld(outcomes: &[OperationOutcome]) -> Vec<String> {
+    let mut lines: Vec<String> = Vec::new();
+    for line in outcomes.iter().flat_map(OperationOutcome::withheld) {
+        if !lines.contains(&line) {
+            lines.push(line);
+        }
+    }
+    lines
+}
+
 /// How a paged search ended: every page it read was handed over first.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[non_exhaustive]
