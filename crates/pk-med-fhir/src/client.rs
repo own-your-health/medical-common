@@ -767,7 +767,6 @@ fn check_type(resource_type: &str) -> Result<(), CliError> {
     }
 }
 
-/// FHIR's `id`: 1 to 64 of `A-Z a-z 0-9 - .`.
 /// Whether a path's segments, before its query, include `.` or `..`, spelled
 /// out or percent-encoded (`%2e%2e`): a URL parser resolves both.
 fn has_dot_segment(path: &str) -> bool {
@@ -781,8 +780,16 @@ fn has_dot_segment(path: &str) -> bool {
         })
 }
 
+/// The longest id [`FhirClient::read`] and [`FhirClient::binary`] accept.
+/// FHIR R4 allows 64, but an Epic app registered with "Use Unconstrained FHIR
+/// IDs", Epic's default, gets longer ones (80 and more), and Epic publishes
+/// no bound.
+pub const MAX_ID_LEN: usize = 256;
+
+/// A FHIR `id` as it goes into a URL path: 1 to [`MAX_ID_LEN`] of
+/// `A-Z a-z 0-9 - .`, not only dots.
 fn check_id(id: &str) -> Result<(), CliError> {
-    let ok = (1..=64).contains(&id.len())
+    let ok = (1..=MAX_ID_LEN).contains(&id.len())
         && !id.chars().all(|c| c == '.')
         && id
             .chars()
@@ -790,9 +797,9 @@ fn check_id(id: &str) -> Result<(), CliError> {
     if ok {
         Ok(())
     } else {
-        Err(CliError::Usage(
-            "not a FHIR id: 1 to 64 of A-Z a-z 0-9 - .".into(),
-        ))
+        Err(CliError::Usage(format!(
+            "not a FHIR id: 1 to {MAX_ID_LEN} of A-Z a-z 0-9 - ., not only dots"
+        )))
     }
 }
 
@@ -1091,6 +1098,34 @@ mod tests {
         }
         assert!(c.transport().seen.borrow().is_empty(), "nothing was sent");
         assert!(check_id("a..b").is_ok(), "dots inside an id are allowed");
+    }
+
+    #[test]
+    fn an_id_longer_than_fhirs_64_is_read() {
+        let long = "A1b2-C3d4.".repeat(MAX_ID_LEN / 10) + &"e".repeat(MAX_ID_LEN % 10);
+        assert_eq!(long.len(), MAX_ID_LEN);
+        for id in ["x".repeat(65), "Eq0".repeat(27), long] {
+            let c = client(vec![json(&format!(
+                r#"{{"resourceType":"Patient","id":"{id}"}}"#
+            ))]);
+            assert_eq!(block_on(c.read("Patient", &id)).unwrap().id, id);
+            let c = client(vec![json(&format!(
+                r#"{{"resourceType":"Binary","id":"{id}","contentType":"text/plain","data":"aGk="}}"#
+            ))]);
+            assert!(
+                block_on(c.binary(&format!("Binary/{id}"))).is_ok(),
+                "{}",
+                id.len()
+            );
+        }
+        let c = client(vec![]);
+        let over = "x".repeat(MAX_ID_LEN + 1);
+        let err = block_on(c.read("Patient", &over)).unwrap_err();
+        assert_eq!(err.exit_code(), 2);
+        assert!(err.to_string().contains("1 to 256"), "{err}");
+        let err = block_on(c.binary(&format!("Binary/{over}"))).unwrap_err();
+        assert_eq!(err.exit_code(), 2);
+        assert!(c.transport().seen.borrow().is_empty(), "nothing was sent");
     }
 
     #[test]

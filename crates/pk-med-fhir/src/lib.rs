@@ -49,7 +49,8 @@ pub mod resources;
 pub mod test_util;
 
 pub use client::{
-    FhirClient, RetryPolicy, SearchEnd, SearchPage, SearchResult, DEFAULT_PAGE_CAP, UNREACHABLE,
+    FhirClient, RetryPolicy, SearchEnd, SearchPage, SearchResult, DEFAULT_PAGE_CAP, MAX_ID_LEN,
+    UNREACHABLE,
 };
 pub use datatypes::*;
 pub use raw::{minify, RawBundle, RawEntry, RawResource};
