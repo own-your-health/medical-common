@@ -35,7 +35,9 @@ pub mod skip {
     pub const VERIFY_FAILED: &str = "verify_failed";
     /// The source failed (a 5xx, a 429 not waited out).
     pub const UPSTREAM: &str = "upstream";
-    /// The source refused access to it (a 403, a scope not granted).
+    /// The source refused access to it (a 403, a scope not granted), or a
+    /// search's answer said it left results out
+    /// (`pk_med_fhir::SearchResult::withheld`).
     pub const FORBIDDEN: &str = "forbidden";
     pub const NOT_FOUND: &str = "not_found";
     /// Over the line limit.

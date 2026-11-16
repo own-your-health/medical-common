@@ -126,6 +126,7 @@ const OUTCOME_LOGIN: &str = include_str!("../fixtures/operation-outcome-login.js
 const OUTCOME_NOT_FOUND: &str = include_str!("../fixtures/operation-outcome-not-found.json");
 const OUTCOME_NOT_SUPPORTED: &str =
     include_str!("../fixtures/operation-outcome-not-supported.json");
+const OUTCOME_SUPPRESSED: &str = include_str!("../fixtures/operation-outcome-suppressed.json");
 
 /// The resource types the synthetic patient has, in pull order.
 pub fn synthetic_types() -> Vec<&'static str> {
@@ -253,6 +254,9 @@ struct State {
     faults: Vec<Fault>,
     requests: Vec<Recorded>,
     page_size: usize,
+    /// `(type, diagnostics)`: a `suppressed` warning on every search page of
+    /// the type.
+    withheld: Vec<(String, String)>,
     deny_next: bool,
     /// The `nonce` the next code's ID token carries instead of the one asked
     /// for: `Some(None)` for none.
@@ -326,6 +330,20 @@ impl MockServer {
     /// Search results per page.
     pub fn page_size(&self, size: usize) {
         self.state.lock().unwrap().page_size = size.max(1);
+    }
+
+    /// Add to every page of every search of `resource_type` an
+    /// OperationOutcome entry (mode `outcome`) whose warning, coded
+    /// `suppressed`, says results were left out, with `diagnostics` as its
+    /// text: what Epic sends for a sub-resource the client may not read. The
+    /// results themselves are served as before. Called again, each page
+    /// carries one per call.
+    pub fn withhold(&self, resource_type: &str, diagnostics: &str) {
+        self.state
+            .lock()
+            .unwrap()
+            .withheld
+            .push((resource_type.to_string(), diagnostics.to_string()));
     }
 
     /// Answer the next authorization with `error=access_denied`, as when the
@@ -806,7 +824,16 @@ fn fhir(
         },
         [resource_type] => {
             let all = synthetic(resource_type);
-            let size = state.lock().unwrap().page_size;
+            let (size, withheld) = {
+                let state = state.lock().unwrap();
+                let withheld: Vec<String> = state
+                    .withheld
+                    .iter()
+                    .filter(|(t, _)| t == resource_type)
+                    .map(|(_, text)| text.clone())
+                    .collect();
+                (state.page_size, withheld)
+            };
             let page: usize = one(params, "_page")
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(1)
@@ -821,7 +848,7 @@ fn fhir(
                 parts.push(&page);
                 format!("{base}/{resource_type}?{}", parts.join("&"))
             };
-            let entries: Vec<String> = all
+            let mut entries: Vec<String> = all
                 .iter()
                 .skip((page - 1) * size)
                 .take(size)
@@ -832,6 +859,7 @@ fn fhir(
                     )
                 })
                 .collect();
+            entries.extend(withheld.iter().map(|text| suppressed_entry(text)));
             let mut links = vec![format!(
                 r#"{{"relation":"self","url":"{base}/{resource_type}?{query}"}}"#
             )];
@@ -853,6 +881,15 @@ fn fhir(
         }
         _ => Answer::fhir(404, OUTCOME_NOT_FOUND),
     }
+}
+
+/// A search entry carrying [`OUTCOME_SUPPRESSED`] with `diagnostics` as its
+/// warning's text.
+fn suppressed_entry(diagnostics: &str) -> String {
+    let mut outcome: Value =
+        serde_json::from_str(OUTCOME_SUPPRESSED).expect("the suppressed fixture is JSON");
+    outcome["issue"][0]["diagnostics"] = Value::String(diagnostics.to_string());
+    json!({"resource": outcome, "search": {"mode": "outcome"}}).to_string()
 }
 
 fn reason(status: u16) -> &'static str {

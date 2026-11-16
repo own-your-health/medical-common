@@ -17,6 +17,9 @@
 //! token, and quote the outcome's text cut to printable characters. What to
 //! do next is the error's remedy ([`SIGN_IN_AGAIN`], [`TRY_AGAIN`]), which a
 //! CLI can replace with `CliError::with_remedy`.
+//!
+//! A `suppressed` warning beside a search's results is no refusal: the
+//! results stand, and [`OperationOutcome::withheld`] says what was left out.
 
 use pk_cli_core::transport::HttpResponse;
 use pk_cli_core::{CliError, Reason};
@@ -32,6 +35,9 @@ pub const SIGN_IN_AGAIN: &str = "sign in again";
 /// HTML 403, a transient OperationOutcome).
 pub const TRY_AGAIN: &str = "try again later";
 
+/// [`OperationOutcome::withheld`]'s line for an issue with no text.
+const WITHHELD: &str = "some results were left out";
+
 impl OperationOutcome {
     /// The first issue of severity `fatal` or `error`. A warning or an
     /// information issue never refines an exit code.
@@ -46,6 +52,35 @@ impl OperationOutcome {
         self.issue
             .iter()
             .any(|i| matches!(i.severity.as_deref(), Some("fatal" | "error")))
+    }
+
+    /// What the server says it left out of its answer: one line per issue
+    /// coded `suppressed` ("not returned due to business rules, consent or
+    /// privacy rules, or access permission constraints"), whatever its
+    /// severity. A server sends these beside a search's results (Epic, as a
+    /// warning naming the sub-resource the client may not read), so the
+    /// results it did send are not all there is. Each line is the issue's
+    /// most specific text: `diagnostics`, else `details.text`, else the
+    /// first `details.coding` display, else "some results were left out";
+    /// printable, 200 characters at most.
+    pub fn withheld(&self) -> Vec<String> {
+        fn text(s: &Option<String>) -> Option<&str> {
+            s.as_deref().map(str::trim).filter(|s| !s.is_empty())
+        }
+        self.issue
+            .iter()
+            .filter(|i| i.code.as_deref() == Some("suppressed"))
+            .map(|i| {
+                let details = i.details.as_ref();
+                let line = text(&i.diagnostics)
+                    .or_else(|| details.and_then(|d| text(&d.text)))
+                    .or_else(|| {
+                        details.and_then(|d| d.coding.iter().find_map(|c| text(&c.display)))
+                    })
+                    .unwrap_or(WITHHELD);
+                printable(line)
+            })
+            .collect()
     }
 
     /// One line for a person: each issue's code and text, printable, 200
@@ -260,6 +295,46 @@ mod tests {
                 .exit_code(),
             4
         );
+    }
+
+    #[test]
+    fn withheld_reads_epics_suppressed_warning() {
+        let epic: OperationOutcome = crate::from_str(include_str!(
+            "../fixtures/operation-outcome-suppressed.json"
+        ))
+        .unwrap();
+        assert_eq!(
+            epic.withheld(),
+            ["Client not authorized for Observation - Synthetic Sub-resource"]
+        );
+        assert!(!epic.is_error());
+    }
+
+    #[test]
+    fn withheld_takes_the_most_specific_text_of_each_suppressed_issue() {
+        let outcome: OperationOutcome = crate::from_str(
+            r#"{"resourceType":"OperationOutcome","issue":[
+                {"severity":"warning","code":"suppressed","diagnostics":"Synthetic A","details":{"text":"generic"}},
+                {"severity":"warning","code":"suppressed","diagnostics":"  ","details":{"text":"Synthetic B"}},
+                {"severity":"information","code":"suppressed","details":{"coding":[{"code":"x"},{"display":"Synthetic C"}]}},
+                {"severity":"error","code":"suppressed"},
+                {"severity":"warning","code":"suppressed","diagnostics":"a\u001b[31mb\nc"},
+                {"severity":"warning","code":"informational","diagnostics":"not withheld"},
+                {"severity":"warning","diagnostics":"no code"}
+            ]}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            outcome.withheld(),
+            [
+                "Synthetic A",
+                "Synthetic B",
+                "Synthetic C",
+                "some results were left out",
+                "a [31mb c"
+            ]
+        );
+        assert!(OperationOutcome::default().withheld().is_empty());
     }
 
     #[test]

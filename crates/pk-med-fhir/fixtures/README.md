@@ -12,7 +12,10 @@ FHIR R4, US Core 6 and CARIN Blue Button 2 define.
 - `smart-configuration.json`, `capability-statement.json`: SMART discovery,
   both forms. `{{ORIGIN}}` and `{{BASE}}` are the mock server's origin and
   FHIR base, filled in when it starts.
-- `operation-outcome-*.json`: the refusals the mock server sends.
+- `operation-outcome-*.json`: the refusals the mock server sends, and
+  `operation-outcome-suppressed.json`, the warning beside a search's results
+  that says some were left out (`MockServer::withhold`), in the shape Epic's
+  sandbox sends it.
 
 Dummy values follow fixed shapes, and `tests/fixture_shapes.rs` checks them
 positively:
