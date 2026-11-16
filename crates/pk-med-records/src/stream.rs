@@ -37,7 +37,9 @@ pub mod skip {
     pub const UPSTREAM: &str = "upstream";
     /// The source refused access to it (a 403, a scope not granted), or a
     /// search's answer said it left results out
-    /// (`pk_med_fhir::SearchResult::withheld`).
+    /// (`pk_med_fhir::SearchResult::withheld`): then one skip per type and
+    /// distinct withheld line, with `resource_type` set and no `id` or
+    /// `search` (DESIGN.md §1.4).
     pub const FORBIDDEN: &str = "forbidden";
     pub const NOT_FOUND: &str = "not_found";
     /// Over the line limit.
