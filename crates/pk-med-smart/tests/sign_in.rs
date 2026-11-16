@@ -15,9 +15,9 @@ use pk_med_fhir::test_util::{
     http_get, Fault, MockServer, CLIENT_ID, CLIENT_SECRET, DYNAMIC_CLIENT_ID, PATIENT_ID,
 };
 use pk_med_smart::{
-    begin, discover, register_dynamic_client, DynamicClient, JwtSigner, LaunchRequest, MemoryStore,
-    NoQuirks, Renewer, ScopeSet, ScopeVersion, SessionStore, SmartApp, SmartConfiguration,
-    SmartSession, SmartSignIn, VendorQuirks,
+    begin, discover, register_dynamic_client, remedy, DynamicClient, JwtSigner, LaunchRequest,
+    MemoryStore, NoQuirks, Renewer, ScopeSet, ScopeVersion, SessionStore, SmartApp,
+    SmartConfiguration, SmartSession, SmartSignIn, VendorQuirks,
 };
 
 const NOW: u64 = 1_600_000_000;
@@ -159,8 +159,12 @@ fn discovery_falls_back_to_metadata_on_a_4xx_and_not_on_a_5xx() {
         "0",
     ))
     .unwrap_err();
-    assert_eq!(err.exit_code(), 5);
+    assert_eq!(
+        (err.exit_code(), err.remedy()),
+        (5, Some(remedy::TRY_AGAIN))
+    );
     assert!(err.to_string().contains("503"), "{err}");
+    assert!(!err.message().to_lowercase().contains("again"), "{err}");
     assert_eq!(
         mock.requests().len(),
         1,
@@ -394,9 +398,20 @@ fn nothing_stored_or_nothing_to_renew_with_is_exit_3() {
     let renewer = Renewer::new(&store, &lock, &oauth, &client, &NoQuirks);
     let err = renewer.fresh("smart/org-0001/pat-0001", NOW).unwrap_err();
     assert_eq!(
-        (err.exit_code(), err.reason()),
-        (3, Some(Reason::NoCredential))
+        (err.exit_code(), err.reason(), err.remedy()),
+        (3, Some(Reason::NoCredential), Some(remedy::SIGN_IN))
     );
+    assert_eq!(
+        err.message(),
+        "not signed in to this organization for this patient"
+    );
+    let mine = err.with_remedy("run `kp auth login --org example`");
+    let shown = mine.to_string();
+    assert!(
+        shown.ends_with("patient \u{2014} run `kp auth login --org example`"),
+        "the CLI's remedy replaces the library's: {shown}"
+    );
+    assert!(!shown.contains("sign in"), "{shown}");
 
     let mut session = sign_in(&mock, &client, &NoQuirks);
     session.tokens.refresh_token = None;
@@ -404,9 +419,14 @@ fn nothing_stored_or_nothing_to_renew_with_is_exit_3() {
     store.save(&session).unwrap();
     let err = renewer.fresh(&session.account(), NOW).unwrap_err();
     assert_eq!(
-        (err.exit_code(), err.reason()),
-        (3, Some(Reason::CredentialRefused))
+        (err.exit_code(), err.reason(), err.remedy()),
+        (
+            3,
+            Some(Reason::CredentialRefused),
+            Some(remedy::SIGN_IN_AGAIN)
+        )
     );
+    assert!(!err.message().contains("sign in"), "{err}");
 }
 
 /// Not a signature: the mock reads the assertion's claims only.
@@ -648,10 +668,15 @@ fn an_openid_sign_in_sends_a_nonce_and_the_id_token_must_carry_it() {
         let err =
             block_on(sign_in.exchange(&oauth(), &client, &code, "org-0001", NOW)).unwrap_err();
         assert_eq!(
-            (err.exit_code(), err.reason()),
-            (3, Some(Reason::CredentialRefused)),
+            (err.exit_code(), err.reason(), err.remedy()),
+            (
+                3,
+                Some(Reason::CredentialRefused),
+                Some(remedy::SIGN_IN_AGAIN)
+            ),
             "{carried:?}"
         );
+        assert!(!err.message().to_lowercase().contains("sign in"), "{err}");
         let sent = nonce_of(sign_in.url()).unwrap();
         assert!(
             !err.to_string().contains(&sent),
@@ -798,7 +823,10 @@ fn a_429_on_discovery_is_not_a_reason_to_ask_elsewhere_and_a_redirect_is() {
         "0",
     ))
     .unwrap_err();
-    assert_eq!(err.exit_code(), 5);
+    assert_eq!(
+        (err.exit_code(), err.remedy()),
+        (5, Some(remedy::TRY_AGAIN))
+    );
     assert_eq!(mock.requests().len(), 1);
 
     let mock = MockServer::start();

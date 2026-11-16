@@ -10,6 +10,7 @@ use pk_cli_core::{CliError, Reason};
 use crate::assertion::JwtSigner;
 use crate::quirks::VendorQuirks;
 use crate::register::jwt_bearer_tokens;
+use crate::remedy;
 use crate::session::{DynamicClient, SessionStore, SmartSession};
 
 /// Makes the signer for a registered client from the client as the session
@@ -111,10 +112,9 @@ impl<'a, T: Transport> Renewer<'a, T> {
 
     fn load(&self, account: &str) -> Result<SmartSession, CliError> {
         self.store.load(account)?.ok_or_else(|| {
-            CliError::Auth(
-                "not signed in to this organization for this patient; run auth login".into(),
-            )
-            .because(Reason::NoCredential)
+            CliError::Auth("not signed in to this organization for this patient".into())
+                .because(Reason::NoCredential)
+                .with_remedy(remedy::SIGN_IN)
         })
     }
 
@@ -172,10 +172,10 @@ impl<'a, T: Transport> Renewer<'a, T> {
         }
         let Some(refresh_token) = session.tokens.refresh_token() else {
             return Err(CliError::Auth(
-                "the sign-in has lapsed and the server gave no refresh token; run auth login again"
-                    .into(),
+                "the sign-in has lapsed and the server gave no refresh token".into(),
             )
-            .because(Reason::CredentialRefused));
+            .because(Reason::CredentialRefused)
+            .with_remedy(remedy::SIGN_IN_AGAIN));
         };
         let mut request = TokenRequest::refresh(&refresh_token);
         if let Some(scope) = self.quirks.refresh_scope(session) {

@@ -13,6 +13,7 @@ use serde_json::Map;
 
 use crate::discovery::SmartConfiguration;
 use crate::quirks::VendorQuirks;
+use crate::remedy;
 use crate::scopes::ScopeSet;
 use crate::session::{LaunchContext, SmartSession};
 
@@ -163,10 +164,10 @@ impl SmartSignIn {
                 .and_then(|c| c.get("nonce").and_then(|n| n.as_str().map(str::to_string)));
             if carried.as_deref() != Some(sent.expose()) {
                 return Err(CliError::Auth(
-                    "the ID token does not carry this sign-in's nonce; refusing it. Sign in again"
-                        .into(),
+                    "the ID token does not carry this sign-in's nonce; refusing it".into(),
                 )
-                .because(Reason::CredentialRefused));
+                .because(Reason::CredentialRefused)
+                .with_remedy(remedy::SIGN_IN_AGAIN));
             }
         }
         let context = LaunchContext::from_response(&response);

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::quirks::VendorQuirks;
+use crate::remedy;
 
 const OAUTH_URIS: &str = "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris";
 
@@ -232,10 +233,10 @@ pub async fn discover<T: Transport>(
             )))
         } else {
             return Err(CliError::Upstream(format!(
-                "the FHIR server at {origin} answered HTTP {} for its SMART {kind} document. Try \
-                 again later",
+                "the FHIR server at {origin} answered HTTP {} for its SMART {kind} document",
                 response.status
-            )));
+            ))
+            .with_remedy(remedy::TRY_AGAIN));
         };
         match outcome.and_then(|config| config.check_for(base).map(|()| config)) {
             Ok(config) => return Ok(config),

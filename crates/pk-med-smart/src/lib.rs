@@ -14,13 +14,16 @@
 //!    ([`JwtSigner`]; feature `rsa` adds an RS384 key, `RsaKey`).
 //!
 //! What a vendor does differently goes in a [`VendorQuirks`]. Tokens never
-//! appear in `Debug` output or messages.
+//! appear in `Debug` output or messages. What to do after an error is its
+//! remedy ([`remedy`]), not part of its message, so a CLI replaces it with
+//! its own command.
 
 pub mod assertion;
 pub mod discovery;
 pub mod launch;
 pub mod quirks;
 pub mod register;
+pub mod remedy;
 pub mod renew;
 #[cfg(feature = "rsa")]
 pub mod rsa_key;
