@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.4.6 — 2026-11-16
+
+Pins cli-common v0.31.1, as v0.4.5 does.
+
+- `pk-med-smart`: what to do after an error is its remedy, no longer part
+  of its message, so a CLI's own ``with_remedy("run `kp auth login …`")``
+  replaces it instead of following "run auth login" in the same line. Six
+  errors moved: not signed in (`remedy::SIGN_IN`), a lapsed sign-in with
+  no refresh token and an ID token without this sign-in's nonce
+  (`SIGN_IN_AGAIN`), a stored session that does not read
+  (`CLEAR_AND_SIGN_IN_AGAIN`) or is in a newer format (`UPDATE`), and a
+  429 or 5xx on discovery (`TRY_AGAIN`). The new `remedy` module names
+  them; `SIGN_IN_AGAIN` and `TRY_AGAIN` are spelled as pk-med-fhir's
+  `outcome` constants (DESIGN.md §3).
+
 ## v0.4.5 — 2026-11-16
 
 Pins cli-common v0.31.1, as v0.4.4 does. Additions only.

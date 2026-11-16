@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use zeroize::Zeroize;
 
+use crate::remedy;
+
 /// The keychain account of a sign-in: `smart/<organization>/<patient>`, each
 /// part with `%` and `/` percent-encoded, so two different pairs never name
 /// one item (`a/b` and `c` against `a` and `b/c`). A FHIR id has neither
@@ -234,18 +236,19 @@ pub trait SessionStore {
 pub fn decode_session(text: &str) -> Result<SmartSession, CliError> {
     let session: SmartSession = serde_json::from_str(text).map_err(|e| {
         CliError::Keychain(format!(
-            "a stored SMART session does not read (line {}, column {}); clear the stored \
-             sign-in and sign in again",
+            "a stored SMART session does not read (line {}, column {})",
             e.line(),
             e.column()
         ))
+        .with_remedy(remedy::CLEAR_AND_SIGN_IN_AGAIN)
     })?;
     if session.format > SESSION_FORMAT {
         return Err(CliError::Keychain(format!(
             "a stored SMART session has format {}, written by a newer release of this CLI \
-             (this one reads up to {SESSION_FORMAT}); update it",
+             (this one reads up to {SESSION_FORMAT})",
             session.format
-        )));
+        ))
+        .with_remedy(remedy::UPDATE));
     }
     Ok(session)
 }
@@ -365,6 +368,8 @@ mod tests {
         assert_eq!(decode_session(&unversioned).unwrap().format, 1);
         let err = decode_session(&stored(2)).unwrap_err();
         assert!(err.to_string().contains("newer release"), "{err}");
+        assert_eq!(err.remedy(), Some(crate::remedy::UPDATE));
+        assert!(!err.message().contains("update"), "{err}");
     }
 
     #[test]
@@ -384,7 +389,10 @@ mod tests {
             r#""obtained_at":0"#,
             r#""obtained_at":"synthetic-secret-token""#,
         );
-        let err = decode_session(&broken).unwrap_err().to_string();
+        let err = decode_session(&broken).unwrap_err();
+        assert_eq!(err.remedy(), Some(crate::remedy::CLEAR_AND_SIGN_IN_AGAIN));
+        assert!(!err.message().contains("sign in"), "{err}");
+        let err = err.to_string();
         assert!(!err.contains("synthetic-secret-token"), "{err}");
         assert!(!err.contains("111111111"), "{err}");
     }
