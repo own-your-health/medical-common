@@ -8,9 +8,11 @@
   withholds is part of a type's data rather than one search; `search`
   stays for a search left out or left unfinished. No code change.
 - DESIGN.md §1.7: a `DocumentReference` search with withheld results keeps
-  what it served, and `documents list` and `documents download --all` warn
-  on stderr once per distinct withheld line, since `documents/v1` has no
-  field for it.
+  what it served. `documents list` and `documents download --all` warn on
+  stderr once per distinct withheld line, and their `--json` output carries
+  an optional `withheld` array of the §1.4 skips, since `documents/v1` has
+  no field for it. The extension holds until `documents/v1` gains a shared
+  field.
 
 ## v0.4.9 — 2026-11-16
 
