@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- DESIGN.md §3.6: why no CLI scripts a portal's sign-in or consent page.
+  The patient approves in a browser window the CLI opens, and everything
+  else runs on the stored session. The section keeps each vendor's terms
+  on scripted access and the protections on its sign-in page. Tests is
+  now §3.7. No code change.
+
 ## v0.5.0 — 2026-11-16
 
 Pins cli-common v0.32.0 for every `pk-cli-*`. A consumer moves its own

@@ -13,7 +13,7 @@ gives a refused reference its base and `is_under` (§2.1) and adds the
 `invalid_reference` skip code (§1.4); v0.4.9 reads what a search's answer
 says it left out (`withheld`, §2.2); v0.5.0 moves to cli-common v0.32.0 and
 sends a registered `https` page as the redirect (`SmartApp::redirect_uri`,
-§3.1).
+§3.1). §3.6 says why no portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -752,7 +752,28 @@ Every method defaults to SMART as written (`NoQuirks`).
 | `send_aud` | `true` | a server that refuses `aud` |
 | `send_nonce` | `true` | a server that refuses `nonce`; nothing is checked then |
 
-### 3.6 Tests
+### 3.6 Scripted portal login: not used, and why
+
+The patient's approval happens in a browser window the CLI opens (§3.1), where
+the person signs in and approves. That covers the first grant and a new one
+when a grant expires: about 90 days at athenahealth, up to a year at Epic.
+Everything else runs on the stored session (§3.3), with no browser, password or
+code. No CLI scripts a portal's sign-in or consent page, and none keeps a
+portal password. That was the user's decision on 2026-11-17, from the findings below. A
+design for scripted sign-in was drafted and closed unbuilt (#21).
+
+The findings come from public pages read on 2026-11-12 to 2026-11-17 by
+the provider CLIs' sessions:
+
+| Vendor | Terms on scripted access | Protections on the sign-in page |
+|---|---|---|
+| athenahealth | forbidden, as the effort's review of its terms found | Okta Identity Engine at `identity.athenahealth.com` (`/.well-known/okta-organization`: `"pipeline": "idx"`) |
+| Epic MyChart | no binding ban. Epic's App Developer Guidelines, which are advisory, ask that a developer "does not circumvent the display of any authentication or authorization mechanisms", and approving the consent page by script would. The MyChart mobile app licence bans "automated scripts or bots", for the app only | a `captchaRequired` flag; hCaptcha or reCAPTCHA where an organization turns one on |
+| NYU Langone (MyChart) | no automation clause; NYU reserves "the right to revoke … access at any time for any reason" | F5 |
+| Kaiser Permanente (kp.org, also the gate to Kaiser's Epic organizations) | forbidden on the plain reading: no "robot … or other automatic device, program, algorithm or methodology" may "access … any portion of the Site". Kaiser's Developer Portal terms take in kp.org's | PingOne Risk device profiling, reCAPTCHA wired in, F5; `robots.txt` disallows `/as/authorization.oauth2` |
+| UnitedHealthcare (HealthSafe ID) | forbidden: "automated software, devices, scripts, robots", and circumventing a block | ThreatMetrix device profiling, reCAPTCHA |
+
+### 3.7 Tests
 
 The sign-in, renewal and registration are tested against §2.3's mock
 server over the real HTTP transport, with a `MemoryStore`. A CLI's own
