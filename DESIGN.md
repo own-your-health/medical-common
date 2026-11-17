@@ -859,8 +859,10 @@ patient id a previous sign-in for that label recorded, if any.
    password with a 302, to its sign-in page with `error=`.
 4. A `Location` that starts with `SmartSignIn::redirect_uri()` ends the
    walk. Its query goes to `listener_uri()`, as §3.1's forwarding page
-   would send it, so the listener checks `state` and `iss` as for a person.
-   The registered https page itself is never fetched.
+   would send it, so the listener checks it as for a person: `state`
+   always, and `iss` when the answer carries one (§3.1; Epic's sandbox
+   sends `code` and `state` only). The registered https page itself is
+   never fetched.
 5. The exchange is §3.1's. The record check follows. The session is stored
    under `RefreshLock::store_signin` (§3.1 step 5).
 
