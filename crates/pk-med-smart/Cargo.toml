@@ -13,6 +13,10 @@ authors.workspace = true
 pk-cli-core = { workspace = true }
 pk-cli-auth = { workspace = true }
 pk-cli-secrets = { workspace = true }
+# Profiles: the profile a session is kept under (ProfileName).
+pk-cli-config = { workspace = true }
+# The `browser` feature: a sign-in window in the profile's own Chrome profile.
+pk-cli-browser = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 base64 = { workspace = true }
@@ -25,7 +29,10 @@ getrandom = { version = "0.4", optional = true, features = ["sys_rng"] }
 
 [features]
 rsa = ["dep:rsa", "dep:sha2", "dep:getrandom"]
+browser = ["dep:pk-cli-browser"]
 
 [dev-dependencies]
+# A launch's profile root in a test, so it never reaches the owner's profile.
+pk-cli-browser = { workspace = true, features = ["test-util"] }
 pk-cli-http = { workspace = true }
 pk-med-fhir = { workspace = true, features = ["test-util"] }

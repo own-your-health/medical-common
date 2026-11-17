@@ -256,7 +256,7 @@ pub fn decode_session(text: &str) -> Result<SmartSession, CliError> {
 /// The session as stored, stamped with this release's [`SESSION_FORMAT`]
 /// whatever format it was read with: what is written is this release's
 /// shape, and the stamp must say so.
-fn encode_session(session: &SmartSession) -> Result<Secret, CliError> {
+pub(crate) fn encode_session(session: &SmartSession) -> Result<Secret, CliError> {
     let mut value = serde_json::to_value(session)
         .map_err(|_| CliError::Other("a SMART session did not serialize".into()))?;
     value["format"] = Value::from(SESSION_FORMAT);
@@ -265,7 +265,7 @@ fn encode_session(session: &SmartSession) -> Result<Secret, CliError> {
 
 /// The keychain's error with the account, which holds the patient's id, put
 /// as `smart/<organization>/…`.
-fn without_account(e: CliError, account: &str) -> CliError {
+pub(crate) fn without_account(e: CliError, account: &str) -> CliError {
     let text = e.to_string();
     if !text.contains(account) {
         return e;

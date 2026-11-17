@@ -1,12 +1,46 @@
 # Changelog
 
-## Unreleased
+## v0.6.0 — 2026-11-17
 
+Pins cli-common v0.33.0 for every `pk-cli-*`. A consumer moves its own
+`pk-cli-*` to v0.33.0 in the same change. Nothing is removed: a CLI that
+keeps its one-item-per-sign-in `CredentialStore` builds unchanged.
+
+- Profiles, one per login (DESIGN.md §1.1). Every command that uses a login
+  takes `--profile <NAME>` (`<PREFIX>_PROFILE`), with no default and no
+  lone profile picked: exit 2 listing the configured ones, through
+  cli-common's `pk_cli_config::profile::resolve`. `profiles list|add|remove`
+  and `profiles migrate <NAME>`; `profiles list --json` is cli-common's
+  `profile-list/v1`.
+- `pk-med-records`: `LOGIN_PROFILES` (`"login-profiles"`), the `cli-info/v1`
+  capability of a CLI whose login commands take `--profile`, so a records
+  store refuses an older provider rather than run it unprofiled.
+- `pk-med-smart`: `ProfileSessions`, a `SessionStore` over cli-common's
+  `pk_cli_auth::vault::Vault`: each session the entry
+  `<profile>/<organization>/<patient>`, the whole CLI under one keychain
+  item, so a new binary asks macOS once rather than once per sign-in.
+  `accounts()` and `delete_all()` for status and `profiles remove`.
+- `pk-med-smart`: `migrate_sessions(from, to, accounts, lock)` moves
+  sessions kept one keychain item each into a profile, under the refresh
+  lock and with no network: each item's text copied, read back and compared
+  before the item is deleted; idempotent. `Migration` counts what moved,
+  what was already there and what was absent. Each old item read by a new
+  binary costs one dialog, once; delete test items beforehand with
+  `security delete-generic-password`, which raises none (§3.2).
+- `pk-med-smart`, feature `browser`: `SignInWindow::open(bin, &profile,
+  &sign_in, before)` and `open_at` open the sign-in in the profile's own
+  kept Chrome profile (`browser-profile-<profile>`), after the pages in
+  `before` (kaiser's kp.org sign-on), and close Chrome on drop so its
+  cookies persist for the next sign-in (§3.1).
+- `PatientContext.session` documents the vault entry name.
+- DESIGN.md §3.2: installs and upgrades on this Mac happen only when the
+  user is present, since a new binary's first keychain read waits on a
+  dialog.
 - DESIGN.md §3.6: why no CLI scripts a portal's sign-in or consent page.
   The patient approves in a browser window the CLI opens, and everything
   else runs on the stored session. The section keeps each vendor's terms
   on scripted access and the protections on its sign-in page. Tests is
-  now §3.7. No code change.
+  now §3.7.
 
 ## v0.5.0 — 2026-11-16
 
