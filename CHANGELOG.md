@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- DESIGN.md §3.1 and `SignInWindow`'s docs: the page opened before the
+  authorize address is mychart's, at Kaiser Permanente's Epic
+  organizations, whose Start page on `healthy.kaiserpermanente.org` needs a
+  kp.org session. kaiser's own sign-in goes to `pfam.kp.org`, on another
+  domain, and passes no such page. v0.6.0 named kaiser. No code change.
+
 ## v0.6.0 — 2026-11-17
 
 Pins cli-common v0.33.0 for every `pk-cli-*`. A consumer moves its own
