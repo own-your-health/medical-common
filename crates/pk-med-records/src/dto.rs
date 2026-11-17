@@ -24,6 +24,12 @@ pub const EXPORT_SCHEMA: &str = "records-export/v1";
 /// `profile-list/v1` (`pk_cli_config::profile::ProfileList`).
 pub const LOGIN_PROFILES: &str = "login-profiles";
 
+/// The `cli-info/v1` capability of a CLI that reads records from files the
+/// owner downloaded, with no login: `patients list` and `records export`
+/// take `--files <DIR>` in place of `--profile` (DESIGN.md §1.1). A records
+/// store passes `--files` only to a provider that lists it.
+pub const RECORDS_FILES: &str = "records-files";
+
 /// An organization a CLI can reach: a provider's FHIR server, or an
 /// insurer's. Also the stream header's `organization`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

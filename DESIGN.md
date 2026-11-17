@@ -17,8 +17,10 @@ sends a registered `https` page as the redirect (`SmartApp::redirect_uri`,
 (§1.1), with every session in the CLI's one-item vault and the move into
 it (§3.2), and a sign-in window per profile (§3.1); v0.6.1 moves to
 cli-common v0.33.1, whose `ConfigStore::save` writes the config, and with it
-each profile's grants, owner-only and atomically (§1.1). §3.6 says why no
-portal sign-in is scripted.
+each profile's grants, owner-only and atomically (§1.1); v0.6.2 moves to
+cli-common v0.33.2 and names the downloaded-files source, `--files <DIR>`
+with the `records-files` capability (§1.1). §3.6 says why no portal
+sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -51,6 +53,8 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 <bin> patients list --profile <NAME>                        # patient-list/v1
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] --ndjson    # records-stream/v1 on stdout
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] -o <DIR>    # the same stream to <DIR>/records.ndjson (records.incomplete.ndjson if it ends incomplete); records-export/v1 on stdout, its path the file written
+<bin> patients list --files <DIR>                           # a source of downloaded files (below), no login
+<bin> records export --files <DIR> --patient <ID> …         # the same, from those files
 <bin> documents list --profile <NAME>                       # documents/v1 (§1.7)
 <bin> documents download --profile <NAME> …                 # documents/v1 (§1.7)
 <bin> api --profile <NAME> GET <PATH>                       # passthrough, GET only
@@ -92,10 +96,28 @@ its DESIGN.md §2.5).
   `profiles` and `info` take none. There is no default profile, and a lone
   profile is never picked: a missing or unknown one is a usage error
   (exit 2) listing the configured ones (`resolve`), or, with none, naming
-  `<bin> profiles add <NAME>`. A command that reads no login (a source of
-  downloaded files) takes none; where one command can use either, a flag
-  chooses the login-free source, and without it the login is used and
-  `--profile` is required.
+  `<bin> profiles add <NAME>`. A command whose only source is files takes
+  none.
+- Downloaded files are the other source, for a CLI that can read records
+  from files the owner downloaded (an insurer's statements, a portal's
+  record download): `--files <DIR>`, with `<PREFIX>_FILES` as its
+  environment fallback. A CLI may keep an older name as an alias. Wherever
+  a command takes `--profile`, the CLI accepts `--files` in its place, at
+  least on `patients list` and `records export`. A command that reads
+  records takes exactly one source:
+  - both flags are a usage error (exit 2);
+  - a flag wins over the other source's variable;
+  - both variables and no flag are exit 2;
+  - neither is exit 2, naming `--files` as well as the configured profiles.
+
+  With `--files`, nothing reads the keychain or the vault, and no request is
+  made. The stream header's `method` is `portal` (§1.4), its
+  `patient.session` is absent, and `--patient` takes an id or label that
+  `patients list --files` listed.
+- `info --json` lists `"records-files"` (`pk_med_records::RECORDS_FILES`)
+  in `cli-info/v1`'s `capabilities` once `patients list` and
+  `records export` take `--files`. A records store passes
+  `--files <DIR>`, and no `--profile`, only to a provider that lists it.
 - `profiles list [--json]` is cli-common's `profile-list/v1`:
   `{"schema": "profile-list/v1", "profiles": [{"name": "adult1"}, …]}`,
   sorted by name. `profiles add <NAME>` adds one. `profiles remove <NAME>`
@@ -1097,10 +1119,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.1" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.1" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.1" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.1" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.2" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.2" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.2" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.2" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1126,3 +1148,4 @@ does not convert to the other.
 | v0.5.0 | v0.32.0 |
 | v0.6.0 | v0.33.0 |
 | v0.6.1 | v0.33.1 |
+| v0.6.2 | v0.33.2 |
