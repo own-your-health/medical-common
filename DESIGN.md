@@ -101,19 +101,31 @@ its DESIGN.md §2.5).
 - Downloaded files are the other source, for a CLI that can read records
   from files the owner downloaded (an insurer's statements, a portal's
   record download): `--files <DIR>`, with `<PREFIX>_FILES` as its
-  environment fallback. A CLI may keep an older name as an alias. Wherever
-  a command takes `--profile`, the CLI accepts `--files` in its place, at
-  least on `patients list` and `records export`. A command that reads
-  records takes exactly one source:
+  environment fallback. A CLI may keep an older name as an alias. On a
+  command that reads records, the CLI accepts `--files` in place of
+  `--profile`: `patients list` and `records export` must, and
+  `documents list|download` may when the files hold documents (§1.7).
+  `api` is a passthrough to the login's server and takes only `--profile`.
+  A command that reads records takes exactly one source:
   - both flags are a usage error (exit 2);
   - a flag wins over the other source's variable;
   - both variables and no flag are exit 2;
   - neither is exit 2, naming `--files` as well as the configured profiles.
 
   With `--files`, nothing reads the keychain or the vault, and no request is
-  made. The stream header's `method` is `portal` (§1.4), its
-  `patient.session` is absent, and `--patient` takes an id or label that
-  `patients list --files` listed.
+  made. The stream header's `method` is `portal` (§1.4) and its
+  `patient.session` is absent. A label belongs to a profile's grant, so
+  `patients list --files` lists no `label`, and `--patient` takes the
+  `PatientContext.id` only. With one member in the files, it may be
+  omitted, as with one context signed in.
+
+  A CLI with both sources gives a member the same identity on each: the
+  same `organization` and the same `patient.id`, derived from the member
+  identifier both carry. A store then files the two streams as one patient
+  at one source and merges the resources they share (§1.4). A CLI whose
+  sources cannot agree gives the files source an `organization.id` of its
+  own and says so in its docs, so a store keeps the two apart rather than
+  splitting one member's records under two ids.
 - `info --json` lists `"records-files"` (`pk_med_records::RECORDS_FILES`)
   in `cli-info/v1`'s `capabilities` once `patients list` and
   `records export` take `--files`. A records store passes

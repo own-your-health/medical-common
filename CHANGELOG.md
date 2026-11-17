@@ -10,8 +10,12 @@ Pins cli-common v0.33.2 for every `pk-cli-*`; a consumer moves its own
   downloaded files with `--files <DIR>` and no login. DESIGN.md §1.1 now
   names that source: the flag, its `<PREFIX>_FILES` fallback, how it and
   `--profile` exclude each other (both are exit 2; a flag beats the other
-  source's variable), and what the stream header says (`method: portal`,
-  no `patient.session`). Before, §1.1 said only that "a flag chooses" it,
+  source's variable), which commands take it (`patients list` and
+  `records export` must, `documents` may, `api` never), what the stream
+  header says (`method: portal`, no `patient.session`, no `label`, so
+  `--patient` takes the id), and that both sources give a member the same
+  `organization` and `patient.id`, or the files source an organization id
+  of its own. Before, §1.1 said only that "a flag chooses" it,
   so a records store could not reach it.
 - Pins cli-common v0.33.2, whose vault creates its `.key.lock` `0600` and
   narrows one left at the umask's mode. It was empty, in a `0700`
