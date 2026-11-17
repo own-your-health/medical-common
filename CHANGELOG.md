@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Pins cli-common v0.33.2, whose vault creates its `.key.lock` `0600` and
+  narrows one left at the umask's mode. It was empty, in a `0700`
+  directory. No API change; a consumer moves to it with the next
+  medical-common release.
 - DESIGN.md §1.1: `profiles migrate` asks for no new approval and its move
   makes no request. A CLI may afterwards revoke the tokens a replaced
   duplicate alone holds, never the kept copy's, and a failed revoke only
