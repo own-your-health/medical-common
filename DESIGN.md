@@ -114,9 +114,13 @@ its DESIGN.md §2.5).
   are in the CLI's vault, one entry per grant (§3.2); relabelling a grant
   moves no entry.
 - `profiles migrate <NAME>` moves the sign-ins a CLI kept before profiles
-  (one keychain item each) into the profile, adding it when it is new: a
-  local command, with no network and no new approval (`migrate_sessions`,
-  §3.2).
+  (one keychain item each) into the profile, adding it when it is new. It
+  asks for no new approval, and the move itself makes no request
+  (`migrate_sessions`, §3.2). When the move replaces a duplicate, a CLI may
+  then revoke the tokens that the dropped copy alone holds. It never
+  touches the kept copy, and a failed revoke is a warning, not an error.
+  Revoking a token the kept copy shares can end the whole grant (athena's
+  `revoke_replaced`).
 - `info --json` lists `"login-profiles"` (`pk_med_records::LOGIN_PROFILES`)
   in `cli-info/v1`'s `capabilities` once the CLI's login commands take
   `--profile`. A records store passes `--profile` only to a provider that

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- DESIGN.md §1.1: `profiles migrate` asks for no new approval and its move
+  makes no request. A CLI may afterwards revoke the tokens a replaced
+  duplicate alone holds, never the kept copy's, and a failed revoke only
+  warns. It said "no network" before. No code change.
+
 ## v0.6.1 — 2026-11-17
 
 Pins cli-common v0.33.1 for every `pk-cli-*`; a consumer moves its own
