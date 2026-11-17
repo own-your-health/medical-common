@@ -1524,8 +1524,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-auth"
-version = "0.33.0"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.33.0#a723fa97050e4866097abc8a4a5a1820d2f6c5c9"
+version = "0.33.1"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.33.1#3df3af94c078bc0fdeb1495c49cc618975deee6c"
 dependencies = [
  "chacha20poly1305",
  "clap",
@@ -1540,8 +1540,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-browser"
-version = "0.33.0"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.33.0#a723fa97050e4866097abc8a4a5a1820d2f6c5c9"
+version = "0.33.1"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.33.1#3df3af94c078bc0fdeb1495c49cc618975deee6c"
 dependencies = [
  "clap",
  "ctrlc",
@@ -1554,8 +1554,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-config"
-version = "0.33.0"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.33.0#a723fa97050e4866097abc8a4a5a1820d2f6c5c9"
+version = "0.33.1"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.33.1#3df3af94c078bc0fdeb1495c49cc618975deee6c"
 dependencies = [
  "pk-cli-core",
  "serde",
@@ -1564,8 +1564,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-core"
-version = "0.33.0"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.33.0#a723fa97050e4866097abc8a4a5a1820d2f6c5c9"
+version = "0.33.1"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.33.1#3df3af94c078bc0fdeb1495c49cc618975deee6c"
 dependencies = [
  "clap",
  "libc",
@@ -1575,8 +1575,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-http"
-version = "0.33.0"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.33.0#a723fa97050e4866097abc8a4a5a1820d2f6c5c9"
+version = "0.33.1"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.33.1#3df3af94c078bc0fdeb1495c49cc618975deee6c"
 dependencies = [
  "clap",
  "pk-cli-core",
@@ -1586,8 +1586,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-secrets"
-version = "0.33.0"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.33.0#a723fa97050e4866097abc8a4a5a1820d2f6c5c9"
+version = "0.33.1"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.33.1#3df3af94c078bc0fdeb1495c49cc618975deee6c"
 dependencies = [
  "clap",
  "keyring",
@@ -1600,7 +1600,7 @@ dependencies = [
 
 [[package]]
 name = "pk-med-dicom"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "flate2",
  "pk-cli-core",
@@ -1609,7 +1609,7 @@ dependencies = [
 
 [[package]]
 name = "pk-med-fhir"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "base64 0.22.1",
  "pk-cli-core",
@@ -1623,7 +1623,7 @@ dependencies = [
 
 [[package]]
 name = "pk-med-records"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "pk-cli-core",
  "pk-cli-http",
@@ -1636,7 +1636,7 @@ dependencies = [
 
 [[package]]
 name = "pk-med-smart"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "base64 0.22.1",
  "getrandom 0.4.3",

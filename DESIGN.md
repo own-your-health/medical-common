@@ -15,8 +15,10 @@ says it left out (`withheld`, §2.2); v0.5.0 moves to cli-common v0.32.0 and
 sends a registered `https` page as the redirect (`SmartApp::redirect_uri`,
 §3.1); v0.6.0 moves to cli-common v0.33.0 and adds profiles, one per login
 (§1.1), with every session in the CLI's one-item vault and the move into
-it (§3.2), and a sign-in window per profile (§3.1). §3.6 says why no portal
-sign-in is scripted.
+it (§3.2), and a sign-in window per profile (§3.1); v0.6.1 moves to
+cli-common v0.33.1, whose `ConfigStore::save` writes the config, and with it
+each profile's grants, owner-only and atomically (§1.1). §3.6 says why no
+portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -105,7 +107,10 @@ its DESIGN.md §2.5).
   grant, in one place: the profile's settings (`Profiles::settings`), or an
   owner-only index of its own beside the config, keyed by profile,
   organization and patient (athena's `sessions.json`). In the second case
-  the profile's settings stay `{}`, so the two never drift. Its sessions
+  the profile's settings stay `{}`, so the two never drift. Either file names
+  the household's patients, so it is written `0600` and replaced
+  atomically: `ConfigStore::save` does both from cli-common v0.33.1, and
+  `pk_cli_core::private_file` is the writer for a CLI's own index. Its sessions
   are in the CLI's vault, one entry per grant (§3.2); relabelling a grant
   moves no entry.
 - `profiles migrate <NAME>` moves the sign-ins a CLI kept before profiles
@@ -1088,10 +1093,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.0" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.0" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.0" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.0" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.1" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.1" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.1" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.1" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1116,3 +1121,4 @@ does not convert to the other.
 | v0.4.9 | v0.31.1 |
 | v0.5.0 | v0.32.0 |
 | v0.6.0 | v0.33.0 |
+| v0.6.1 | v0.33.1 |

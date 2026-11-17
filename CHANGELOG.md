@@ -1,7 +1,19 @@
 # Changelog
 
-## Unreleased
+## v0.6.1 — 2026-11-17
 
+Pins cli-common v0.33.1 for every `pk-cli-*`; a consumer moves its own
+`pk-cli-*` to v0.33.1 in the same change. No API change in medical-common.
+
+- cli-common v0.33.1's `ConfigStore::save` writes `config.json` `0600` by
+  temporary file and rename, so the profiles and grants v0.6.0 put in it are
+  no longer readable by other local accounts or lost to a torn write. A
+  `0644` file from before is tightened on its next save.
+  `pk_cli_core::private_file` is the one owner-only writer, for a CLI that
+  keeps its grants in an index of its own. A CLI that wrote its config
+  through its own writer for v0.6.0 can go back to `ConfigStore::save`.
+- DESIGN.md §1.1: the config and any grant index are written owner-only and
+  atomically.
 - DESIGN.md §1.1: a CLI keeps one record per grant, in the profile's
   settings or in an owner-only index of its own keyed by profile,
   organization and patient, never both. §3.7: a CLI's unit tests cover
