@@ -17,7 +17,11 @@ use crate::remedy;
 use crate::scopes::ScopeSet;
 use crate::session::{LaunchContext, SmartSession};
 
-/// Who signs in: the CLI's registered client and its redirect ports.
+/// Who signs in: the CLI's registered client, its redirect ports, and the
+/// registered `https` page that forwards the redirect, if any. Build it with
+/// [`SmartApp::new`]: it is `#[non_exhaustive]`, so a field a later release
+/// adds comes with a default instead of breaking the CLI.
+#[non_exhaustive]
 pub struct SmartApp {
     /// The CLI's name, on the page the browser shows at the end.
     pub app: String,
@@ -27,6 +31,41 @@ pub struct SmartApp {
     /// The loopback ports registered with the vendor, tried in order; empty
     /// for any port (a vendor that matches only the host).
     pub ports: Vec<u16>,
+    /// A registered `https` page sent as the redirect instead of the
+    /// listener's own `http://127.0.0.1:<port>/callback`. See
+    /// [`SmartApp::redirect_uri`].
+    pub redirect_uri: Option<String>,
+}
+
+impl SmartApp {
+    /// The CLI's name, its client, and its registered loopback ports (empty
+    /// for any port). The redirect is the listener's own.
+    pub fn new(app: impl Into<String>, client: ClientAuth, ports: Vec<u16>) -> Self {
+        SmartApp {
+            app: app.into(),
+            client,
+            ports,
+            redirect_uri: None,
+        }
+    }
+
+    /// Send `uri` as the redirect instead of the listener's
+    /// `http://127.0.0.1:<port>/callback`, for a vendor that accepts only
+    /// `https` redirects in production (Epic). A static page at `uri` sends
+    /// the browser on to the listener with the query unchanged. The listener
+    /// checks `state` and `iss` as for a direct redirect, and the exchange
+    /// names `uri` with the PKCE verifier, which never leaves this machine.
+    ///
+    /// The page forwards to one port, so `ports` must name exactly that one:
+    /// with two, a busy first port would bind the second, and the answer
+    /// would go to whatever holds the first. [`begin`] refuses (exit 2,
+    /// cli-common v0.32.0) a `uri` that is not `https`, has no host, names a
+    /// user or carries a fragment, and an app that does not name exactly one
+    /// port. The message names no part of `uri`.
+    pub fn redirect_uri(mut self, uri: impl Into<String>) -> Self {
+        self.redirect_uri = Some(uri.into());
+        self
+    }
 }
 
 /// What a sign-in is for.
@@ -46,7 +85,9 @@ pub struct LaunchRequest<'a> {
 /// sent anywhere yet: print [`SmartSignIn::url`] and open it. When the scope
 /// asks for `openid`, the address carries a fresh `nonce` that
 /// [`SmartSignIn::exchange`] checks against the ID token
-/// ([`VendorQuirks::send_nonce`]).
+/// ([`VendorQuirks::send_nonce`]). With [`SmartApp::redirect_uri`] the
+/// address names that page, and the answer still arrives at
+/// [`SmartSignIn::listener_uri`].
 pub fn begin(app: &SmartApp, request: LaunchRequest<'_>) -> Result<SmartSignIn, CliError> {
     let config = request.config;
     if !config.supports_s256() {
@@ -83,6 +124,9 @@ pub fn begin(app: &SmartApp, request: LaunchRequest<'_>) -> Result<SmartSignIn, 
     if let Some(issuer) = &config.issuer {
         flow = flow.issuer(issuer);
     }
+    if let Some(uri) = &app.redirect_uri {
+        flow = flow.redirect_uri(uri);
+    }
     Ok(SmartSignIn {
         pending: flow.start()?,
         config: config.clone(),
@@ -111,7 +155,7 @@ impl SmartSignIn {
     /// Whether the answer's `iss` (RFC 9207) is checked against the
     /// discovered issuer. Only when discovery named one: the `/metadata`
     /// fallback never does, and a well-known document may leave it out.
-    /// Even then an answer without `iss` passes (cli-common v0.31.1), so a
+    /// Even then an answer without `iss` passes (cli-common v0.32.0), so a
     /// mix-up between two authorization servers is caught only for servers
     /// that send it. The session records the issuer it was bound to
     /// ([`SmartSession::issuer`]).
@@ -119,8 +163,17 @@ impl SmartSignIn {
         self.config.issuer.is_some()
     }
 
+    /// The redirect the address sent and the exchange names: the listener's,
+    /// or the page [`SmartApp::redirect_uri`] set.
     pub fn redirect_uri(&self) -> &str {
         self.pending.redirect_uri()
+    }
+
+    /// Where the answer must arrive: `http://127.0.0.1:<port>/callback`. The
+    /// same as [`redirect_uri`](Self::redirect_uri) unless a page forwards
+    /// the answer; then it is the address the page must send the browser to.
+    pub fn listener_uri(&self) -> String {
+        self.pending.listener_uri()
     }
 
     /// Whether the authorization carries a `nonce` that the exchange checks.

@@ -84,8 +84,12 @@ fn scan_line(line: &str) -> Vec<String> {
     }
     for word in line.split(|c: char| c.is_whitespace() || "\"'<>(),;`".contains(c)) {
         if let Some((local, domain)) = word.split_once('@') {
-            let domain =
-                domain.trim_end_matches(|c: char| !(c.is_ascii_alphanumeric() || c == '-'));
+            // The host ends where a URL's path, port or query begins.
+            let domain = domain
+                .split(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '.'))
+                .next()
+                .unwrap_or_default()
+                .trim_end_matches('.');
             let dummy = local.is_empty()
                 || !domain.contains('.')
                 || domain == "example.com"
@@ -141,6 +145,7 @@ fn the_scanner_finds_the_shapes() {
         (format!("call {}-{}-{}", "312", "867", "5309"), "number"),
         (format!("ssn {}-{}-{}", "123", "45", "6789"), "ssn-like"),
         (format!("mail someone@{}.com", "gmail"), "email"),
+        (format!("https://someone@{}.com/callback", "gmail"), "email"),
         (
             format!("lives at {} Evergreen Terrace Dr", 742),
             "address-like",
@@ -158,6 +163,7 @@ fn the_scanner_finds_the_shapes() {
         "phone 555-0100",
         "MRN-0000001",
         "robin@example.com",
+        "https://robin@pages.example.test/app/callback",
         "1 Example St",
         r#""birthDate": "1970-01-01""#,
         "NPI 0000000001",

@@ -261,6 +261,8 @@ struct State {
     /// The `nonce` the next code's ID token carries instead of the one asked
     /// for: `Some(None)` for none.
     nonce_next: Option<Option<String>>,
+    /// Redirects accepted besides the loopback.
+    redirects: Vec<String>,
 }
 
 /// The mock server. It stops when dropped.
@@ -344,6 +346,14 @@ impl MockServer {
             .unwrap()
             .withheld
             .push((resource_type.to_string(), diagnostics.to_string()));
+    }
+
+    /// Accept `uri` as a redirect besides the loopback, as a vendor accepts
+    /// the `https` page registered for an app. The authorization answers
+    /// with a 302 to `uri`, which a test follows as the page would, to the
+    /// listener; the exchange must name `uri` too.
+    pub fn accept_redirect(&self, uri: &str) {
+        self.state.lock().unwrap().redirects.push(uri.to_string());
     }
 
     /// Answer the next authorization with `error=access_denied`, as when the
@@ -590,7 +600,16 @@ fn one<'a>(params: &'a [(String, String)], name: &str) -> Option<&'a str> {
 
 fn authorize(params: &[(String, String)], state: &Mutex<State>, base: &str) -> Answer {
     let redirect = one(params, "redirect_uri").unwrap_or_default();
-    if !(redirect.starts_with("http://127.0.0.1:") || redirect.starts_with("http://localhost:")) {
+    let registered = state
+        .lock()
+        .unwrap()
+        .redirects
+        .iter()
+        .any(|r| r == redirect);
+    if !(registered
+        || redirect.starts_with("http://127.0.0.1:")
+        || redirect.starts_with("http://localhost:"))
+    {
         return Answer::json(
             400,
             r#"{"error":"invalid_request","error_description":"redirect_uri"}"#,

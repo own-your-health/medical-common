@@ -85,17 +85,29 @@ fn browse(url: &str) -> std::thread::JoinHandle<()> {
 }
 
 fn app(client: &ClientAuth) -> SmartApp {
-    SmartApp {
-        app: "pk-test".into(),
-        client: match client {
-            ClientAuth::SecretBasic { client_id, secret } => ClientAuth::SecretBasic {
-                client_id: client_id.clone(),
-                secret: Secret::new(secret.expose()),
-            },
-            other => ClientAuth::public(other.client_id()),
+    let client = match client {
+        ClientAuth::SecretBasic { client_id, secret } => ClientAuth::SecretBasic {
+            client_id: client_id.clone(),
+            secret: Secret::new(secret.expose()),
         },
-        ports: Vec::new(),
-    }
+        other => ClientAuth::public(other.client_id()),
+    };
+    SmartApp::new("pk-test", client, Vec::new())
+}
+
+fn begin_with(mock: &MockServer, app: &SmartApp) -> Result<SmartSignIn, CliError> {
+    let config = config(mock);
+    let base = mock.fhir_base();
+    begin(
+        app,
+        LaunchRequest {
+            config: &config,
+            fhir_base: &base,
+            aud: None,
+            scopes: ScopeSet::standalone_patient().read_all(ScopeVersion::for_server(&config)),
+            quirks: &NoQuirks,
+        },
+    )
 }
 
 fn start(mock: &MockServer, client: &ClientAuth, quirks: &dyn VendorQuirks) -> SmartSignIn {
@@ -233,6 +245,85 @@ fn a_public_client_signs_in_with_the_patient_context() {
         .unwrap();
     assert!(authorize.target.contains("code_challenge_method=S256"));
     assert!(authorize.target.contains("aud="), "{}", authorize.target);
+}
+
+/// The `https` page registered for the app, which forwards to the listener.
+const PAGE: &str = "https://pages.example.test/pk-test/callback";
+
+/// A port free a moment ago, for an app that names the one its page
+/// forwards to.
+fn free_port() -> u16 {
+    std::net::TcpListener::bind(("127.0.0.1", 0))
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
+}
+
+#[test]
+fn a_forwarded_sign_in_sends_the_https_page_and_hears_the_answer_on_the_listener() {
+    let mock = MockServer::start();
+    mock.accept_redirect(PAGE);
+    let port = free_port();
+    let app =
+        SmartApp::new("pk-test", ClientAuth::public(CLIENT_ID), vec![port]).redirect_uri(PAGE);
+    let sign_in = begin_with(&mock, &app).unwrap();
+    assert_eq!(sign_in.redirect_uri(), PAGE);
+    let listener = format!("http://127.0.0.1:{port}/callback");
+    assert_eq!(sign_in.listener_uri(), listener);
+
+    // The browser follows the authorization to the page, and the page sends
+    // it on to the listener with the query unchanged.
+    let url = sign_in.url().to_string();
+    let browser = std::thread::spawn(move || {
+        let answer = http_get(&url).unwrap();
+        assert_eq!(answer.status, 302, "{}", answer.body);
+        let back = answer.header("location").unwrap().to_string();
+        let query = back.strip_prefix(&format!("{PAGE}?")).expect("the page");
+        http_get(&format!("{listener}?{query}")).unwrap();
+    });
+    let code = sign_in
+        .wait_for_code(Duration::from_secs(10), |reason| {
+            panic!("refused: {reason}")
+        })
+        .unwrap();
+    browser.join().unwrap();
+    // The mock refuses an exchange whose redirect_uri is not the page's.
+    let session = block_on(sign_in.exchange(
+        &oauth(),
+        &ClientAuth::public(CLIENT_ID),
+        &code,
+        "org-0001",
+        NOW,
+    ))
+    .unwrap();
+    assert_eq!(session.patient.as_deref(), Some(PATIENT_ID));
+}
+
+#[test]
+fn a_forwarded_redirect_needs_one_port_and_an_https_page() {
+    let mock = MockServer::start();
+    let client = || ClientAuth::public(CLIENT_ID);
+    let refused = [
+        SmartApp::new("pk-test", client(), Vec::new()).redirect_uri(PAGE),
+        SmartApp::new("pk-test", client(), vec![free_port(), free_port()]).redirect_uri(PAGE),
+        SmartApp::new("pk-test", client(), vec![free_port()])
+            .redirect_uri("http://pages.example.test/pk-test/callback"),
+        SmartApp::new("pk-test", client(), vec![free_port()]).redirect_uri(format!("{PAGE}#top")),
+        SmartApp::new("pk-test", client(), vec![free_port()])
+            .redirect_uri("https://@pages.example.test/pk-test/callback"),
+        SmartApp::new("pk-test", client(), vec![free_port()])
+            .redirect_uri("https://someone@pages.example.test/pk-test/callback"),
+    ];
+    for app in refused {
+        let err = begin_with(&mock, &app).err().expect("refused");
+        assert_eq!(err.exit_code(), 2, "{err}");
+        assert!(!err.to_string().contains("pages.example.test"), "{err}");
+    }
+    assert!(
+        mock.requests().iter().all(|r| r.path() != "/authorize"),
+        "nothing was sent"
+    );
 }
 
 #[test]
