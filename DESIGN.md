@@ -101,9 +101,13 @@ its DESIGN.md §2.5).
   profile (`pk_cli_browser::forget_named_profile`) and its config, and
   asks first (piekstra-cli/1 §1.3: `--force`, exit 6 when it cannot ask).
 - A profile holds zero or more grants, each an organization and a patient
-  label (`--label`) with the patient's id, in the profile's settings
-  (`Profiles::settings`). Its sessions are in the CLI's vault, one entry
-  per grant (§3.2); relabelling a grant moves no entry.
+  label (`--label`) with the patient's id. A CLI keeps one record per
+  grant, in one place: the profile's settings (`Profiles::settings`), or an
+  owner-only index of its own beside the config, keyed by profile,
+  organization and patient (athena's `sessions.json`). In the second case
+  the profile's settings stay `{}`, so the two never drift. Its sessions
+  are in the CLI's vault, one entry per grant (§3.2); relabelling a grant
+  moves no entry.
 - `profiles migrate <NAME>` moves the sign-ins a CLI kept before profiles
   (one keychain item each) into the profile, adding it when it is new: a
   local command, with no network and no new approval (`migrate_sessions`,
@@ -886,11 +890,26 @@ the provider CLIs' sessions:
 
 The sign-in, renewal and registration are tested against §2.3's mock
 server over the real HTTP transport, with a `MemoryStore`, and renewal
-again in a profile's vault. A CLI's own tests give the vault a key store
-from its `<PREFIX>_KEYCHAIN_SERVICE` test override (an empty service) and a
-temporary directory, and `CredentialStore` the same service, so nothing
-reads the real keychain or vault. The window's tests refuse a bad page
-before any Chrome starts.
+again in a profile's vault. The window's tests refuse a bad page before any
+Chrome starts.
+
+A CLI's own tests:
+
+- **Unit tests** build the vault with cli-common's `MemoryKeys` and a
+  temporary directory (`Vault::new`), and test the move with a second
+  `MemoryKeys` as the old store: `migrate_sessions` takes any `KeyStore`
+  as `from`. The moved, kept, newer-wins and failure paths are tested
+  there.
+- **Surface tests** run the binary with its `<PREFIX>_KEYCHAIN_SERVICE` test
+  override (an empty service), so a logged-out command reads nothing: an
+  empty vault reads no key. They never write the vault or the keychain.
+  On macOS a write would leave a real item that every rebuilt test binary
+  then prompts for. A surface test that points `HOME` at a temporary
+  directory has no keychain at all (`CredentialStore` fails with "A
+  default keychain could not be found"), so the moved path of
+  `profiles migrate` is not reachable through the binary. It is the unit
+  tests' to cover; the surface test checks the arguments and the
+  nothing-to-move path.
 
 ## 4. DICOM headers (crate `pk-med-dicom`)
 

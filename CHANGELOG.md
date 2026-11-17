@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- DESIGN.md §1.1: a CLI keeps one record per grant, in the profile's
+  settings or in an owner-only index of its own keyed by profile,
+  organization and patient, never both. §3.7: a CLI's unit tests cover
+  the move with `MemoryKeys` as the old store; surface tests never write the
+  vault or the keychain, and with a temporary `HOME` have no keychain at
+  all. No code change.
 - DESIGN.md §3.1 and `SignInWindow`'s docs: the page opened before the
   authorize address is mychart's, at Kaiser Permanente's Epic
   organizations, whose Start page on `healthy.kaiserpermanente.org` needs a
