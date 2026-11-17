@@ -20,6 +20,7 @@ use pk_cli_auth::refresh_lock::RefreshLock;
 use pk_cli_auth::vault::{KeyStore, Migration, Vault};
 use pk_cli_config::profile::ProfileName;
 use pk_cli_core::CliError;
+use pk_cli_secrets::Secret;
 
 use crate::session::{decode_session, encode_session, without_account, SessionStore, SmartSession};
 
@@ -102,21 +103,26 @@ impl SessionStore for ProfileSessions<'_> {
 /// `CredentialStore::for_binary(bin)`) into `to`, a profile's sessions,
 /// holding `lock` (the CLI's refresh lock) throughout, so no renewal writes
 /// either side meanwhile. Nothing goes over the network and nothing needs
-/// the patient's approval. Each item's text is copied as it is.
+/// the patient's approval. An item's text is copied as it is.
 ///
-/// Per account ([`Vault::migrate_from`]): a session the profile already
-/// holds is kept (nothing writes the old item once a CLI has moved, so it is
-/// the newer) and the old item deleted; otherwise the item is read, written
-/// to the profile, read back and compared, and only then deleted. A failure
-/// leaves the old item in place, so a second run picks up where the first
-/// stopped, and a run with nothing left to move only looks up items that
-/// are gone, which raises no dialog. An error names no patient.
+/// Per account:
+/// - only the old item: it is written to the profile, read back and
+///   compared, and only then deleted (`moved`);
+/// - both: the newer sign-in wins, by when its tokens were obtained. An old
+///   item newer than the profile's copy (signed in again after a downgrade)
+///   replaces it the same way (`moved`); otherwise the profile's copy is
+///   kept and the item deleted (`kept`). An item that does not read loses;
+/// - only the profile's copy, or neither: nothing to do (`kept`, `absent`).
+///
+/// A failure leaves the old item in place, so a second run picks up where
+/// the first stopped. A run with nothing left to move only looks up items
+/// that are gone, which raises no dialog. An error names no patient.
 ///
 /// Each old item read by a newly built binary costs one macOS dialog, once.
 /// Delete test and sandbox items beforehand (`security
 /// delete-generic-password -s piekstra.<bin> -a <account>`, which raises
-/// none) rather than move them. A downgrade past the move finds no
-/// sign-in. Do not call this while holding `lock`: it is not re-entrant.
+/// none) rather than move them. A downgrade past the move finds no sign-in.
+/// Do not call this while holding `lock`: it is not re-entrant.
 pub fn migrate_sessions(
     from: &dyn KeyStore,
     to: &ProfileSessions<'_>,
@@ -126,15 +132,57 @@ pub fn migrate_sessions(
     lock.hold(|| {
         let mut done = Migration::default();
         for account in accounts {
-            let name = to.entry_name(account)?;
-            let one = to
-                .vault
-                .migrate_from(from, &[(account.as_str(), name.as_str())])
-                .map_err(|e| without_account(e, account))?;
-            done.moved += one.moved;
-            done.kept += one.kept;
-            done.absent += one.absent;
+            migrate_one(from, to, account, &mut done).map_err(|e| without_account(e, account))?;
         }
         Ok(done)
     })
+}
+
+fn migrate_one(
+    from: &dyn KeyStore,
+    to: &ProfileSessions<'_>,
+    account: &str,
+    done: &mut Migration,
+) -> Result<(), CliError> {
+    let name = to.entry_name(account)?;
+    let held = to.vault.get(&name)?;
+    let Some(item) = from.get(account)? else {
+        if held.is_some() {
+            done.kept += 1;
+        } else {
+            done.absent += 1;
+        }
+        return Ok(());
+    };
+    if let Some(held) = held {
+        let obtained = |text: &Secret| {
+            decode_session(text.expose())
+                .ok()
+                .map(|s| s.tokens.obtained_at)
+        };
+        let item_is_newer = match (obtained(&item), obtained(&held)) {
+            (Some(item), Some(held)) => item > held,
+            (Some(_), None) => true,
+            (None, _) => false,
+        };
+        if !item_is_newer {
+            from.delete(account)?;
+            done.kept += 1;
+            return Ok(());
+        }
+    }
+    to.vault.put(&name, &item)?;
+    let same = to
+        .vault
+        .get(&name)?
+        .is_some_and(|back| back.expose() == item.expose());
+    if !same {
+        return Err(CliError::Other(
+            "a session written to the vault did not read back the same; the keychain item is kept"
+                .into(),
+        ));
+    }
+    from.delete(account)?;
+    done.moved += 1;
+    Ok(())
 }

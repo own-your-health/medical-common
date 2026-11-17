@@ -23,7 +23,9 @@ keeps its one-item-per-sign-in `CredentialStore` builds unchanged.
 - `pk-med-smart`: `migrate_sessions(from, to, accounts, lock)` moves
   sessions kept one keychain item each into a profile, under the refresh
   lock and with no network: each item's text copied, read back and compared
-  before the item is deleted; idempotent. `Migration` counts what moved,
+  before the item is deleted; when the profile already holds the session,
+  the newer by when its tokens were obtained wins (a sign-in after a
+  downgrade); idempotent. `Migration` counts what moved,
   what was already there and what was absent. Each old item read by a new
   binary costs one dialog, once; delete test items beforehand with
   `security delete-generic-password`, which raises none (§3.2).
@@ -32,7 +34,8 @@ keeps its one-item-per-sign-in `CredentialStore` builds unchanged.
   kept Chrome profile (`browser-profile-<profile>`), after the pages in
   `before` (kaiser's kp.org sign-on), and close Chrome on drop so its
   cookies persist for the next sign-in (§3.1).
-- `PatientContext.session` documents the vault entry name.
+- `PatientContext.session` stays the account `smart/<org>/<patient>`, an
+  opaque handle the CLI resolves within the command's profile.
 - DESIGN.md §3.2: installs and upgrades on this Mac happen only when the
   user is present, since a new binary's first keychain read waits on a
   dialog.

@@ -180,10 +180,81 @@ fn old_items_move_into_a_profile_once() {
     assert!(old.get(&moving).unwrap().is_none());
     assert!(old.get(&kept).unwrap().is_none());
 
-    let reads = old.reads();
-    let again = migrate_sessions(&old, &sessions, &accounts[..2], &dir.lock()).unwrap();
-    assert_eq!(again.kept, 2);
-    assert_eq!(old.reads(), reads, "nothing left to read");
+    // Again: only lookups of items that are gone (no dialog), nothing written.
+    let writes = keys.writes();
+    let again = migrate_sessions(&old, &sessions, &accounts, &dir.lock()).unwrap();
+    assert_eq!(
+        again,
+        Migration {
+            moved: 0,
+            kept: 2,
+            absent: 1
+        }
+    );
+    assert_eq!(keys.writes(), writes);
+    assert_eq!(
+        sessions.load(&moving).unwrap().unwrap().tokens.access_token,
+        "old-token"
+    );
+}
+
+fn obtained(organization: &str, patient: &str, token: &str, at: u64) -> String {
+    stored(organization, patient, token)
+        .replace(r#""obtained_at":0"#, &format!(r#""obtained_at":{at}"#))
+}
+
+#[test]
+fn a_sign_in_after_a_downgrade_wins_over_the_older_copy() {
+    let dir = Dir::new();
+    let keys = Arc::new(MemoryKeys::new());
+    let vault = dir.vault(&keys);
+    let sessions = ProfileSessions::new(&vault, profile("adult1"));
+    let old = MemoryKeys::new();
+    let newer = account("org-1", PATIENT);
+    let older = account("org-2", "222222222");
+    // Moved on the new release, then signed in again on the old one.
+    vault
+        .put(
+            &sessions.entry_name(&newer).unwrap(),
+            &Secret::new(obtained("org-1", PATIENT, "moved", 100)),
+        )
+        .unwrap();
+    old.set(
+        &newer,
+        &Secret::new(obtained("org-1", PATIENT, "signed-in-again", 200)),
+    )
+    .unwrap();
+    // An old item older than the profile's copy loses.
+    vault
+        .put(
+            &sessions.entry_name(&older).unwrap(),
+            &Secret::new(obtained("org-2", "222222222", "current", 300)),
+        )
+        .unwrap();
+    old.set(
+        &older,
+        &Secret::new(obtained("org-2", "222222222", "stale", 200)),
+    )
+    .unwrap();
+
+    let done = migrate_sessions(
+        &old,
+        &sessions,
+        &[newer.clone(), older.clone()],
+        &dir.lock(),
+    )
+    .unwrap();
+    assert_eq!((done.moved, done.kept, done.absent), (1, 1, 0));
+    assert_eq!(
+        sessions.load(&newer).unwrap().unwrap().tokens.access_token,
+        "signed-in-again"
+    );
+    assert_eq!(
+        sessions.load(&older).unwrap().unwrap().tokens.access_token,
+        "current"
+    );
+    assert!(old.get(&newer).unwrap().is_none());
+    assert!(old.get(&older).unwrap().is_none());
 }
 
 /// A keychain whose errors quote the account, as the real one's can.

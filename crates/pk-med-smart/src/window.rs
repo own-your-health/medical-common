@@ -52,9 +52,9 @@ impl SignInWindow {
         Self::launch(bin, profile, start, before, |launch| launch)
     }
 
-    /// [`open_at`](Self::open_at), with the launch adjusted first (a test's
-    /// Chrome and profile root, `quiet`, `ctrl_c`).
-    pub fn launch(
+    /// [`open_at`](Self::open_at), with the launch adjusted first: a test's
+    /// Chrome and profile root.
+    pub(crate) fn launch(
         bin: &str,
         profile: &ProfileName,
         start: &str,

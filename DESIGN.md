@@ -37,17 +37,21 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 ### 1.1 Commands
 
 ```text
-<bin> profiles list                               # profile-list/v1
-<bin> profiles add <NAME> | remove <NAME>         # one profile per login (below)
-<bin> profiles migrate <NAME>                     # sign-ins kept before profiles, into <NAME>
-<bin> orgs list                                   # org-list/v1
-<bin> orgs search <TEXT>                          # org-list/v1
+<bin> profiles list                                         # profile-list/v1
+<bin> profiles add <NAME>                                   # one profile per login (below)
+<bin> profiles remove <NAME>                                # its sign-ins, browser profile and config; asks first
+<bin> profiles migrate <NAME>                               # sign-ins kept before profiles, into <NAME>
+<bin> orgs list                                             # org-list/v1
+<bin> orgs search <TEXT>                                    # org-list/v1
 <bin> auth login --profile <NAME> --org <ORG> [--label <WHO>]   # browser sign-in, PKCE, loopback redirect
-<bin> patients list --profile <NAME>              # patient-list/v1
+<bin> auth status --profile <NAME>                          # auth-status/v1
+<bin> auth logout --profile <NAME>
+<bin> patients list --profile <NAME>                        # patient-list/v1
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] --ndjson    # records-stream/v1 on stdout
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] -o <DIR>    # the same stream to <DIR>/records.ndjson (records.incomplete.ndjson if it ends incomplete); records-export/v1 on stdout, its path the file written
-<bin> documents list | download --profile <NAME>  # documents/v1 (§1.7)
-<bin> api GET <PATH> --profile <NAME>             # passthrough, GET only
+<bin> documents list --profile <NAME>                       # documents/v1 (§1.7)
+<bin> documents download --profile <NAME> …                 # documents/v1 (§1.7)
+<bin> api --profile <NAME> GET <PATH>                       # passthrough, GET only
 ```
 
 - `orgs search` matches `name`, `aliases` and `location`, case-insensitive.
@@ -144,7 +148,7 @@ sign-in for. `patients list` emits `Paged<PatientContext>` (`patient-list/v1`,
 | `member_role` | optional | `subscriber` or `dependent` |
 | `fhir_user` | optional | the signed-in user's `fhirUser` (`Patient/…`, `RelatedPerson/…`) |
 | `name` | optional | the name the source shows, for the person's own terminal; never in a fixture, a log or an error message |
-| `session` | optional | where this sign-in is kept, never the token: the vault entry `<profile>/<org>/<patient>` (§3.2), or before profiles the keychain account `smart/<org>/<patient>` |
+| `session` | optional | the sign-in's account, `smart/<org>/<patient>` (`pk_med_smart::account`, §3.2), never the token. An opaque handle: the CLI finds the session by it within the profile the command ran as, in the vault entry `<profile>/<org>/<patient>`, or for a CLI before profiles in the keychain item of that name |
 
 ### 1.4 The records stream (`records-stream/v1`)
 
@@ -704,22 +708,25 @@ rather than once per sign-in. `accounts()` lists the profile's sessions;
 `delete_all()` is `profiles remove`'s. A CLI's other secrets (a
 confidential client's secret) go in the same vault under a name with a
 leading `_` (`_client-secret`), which no profile name has, so the CLI still
-reads one item and a profile's listing never includes them. This entry name is the `session` a
-`PatientContext` names (§1.3).
+reads one item and a profile's listing never includes them. The account,
+not the entry name, is the `session` a `PatientContext` names (§1.3); the
+profile is the command's.
 
 **Moving in.** `migrate_sessions(&CredentialStore::for_binary(bin),
 &sessions, &accounts, &lock)` moves sessions kept the old way, one keychain
 item at `account()` each, into a profile, under the refresh lock and with
-no network: per account, a session the profile already holds is kept and
-the old item deleted; otherwise the item's text is copied, read back,
-compared, and only then deleted, so a failure leaves it for the next run.
-It is idempotent, and a run with nothing left to move only looks up absent
-items. `SessionStore` stays implemented for `CredentialStore` for that
+no network. Per account, an old item the profile does not hold, or one
+newer than the profile's copy by when its tokens were obtained, has its
+text copied, read back, compared, and only then deleted, so a failure
+leaves it for the next run; an older or unreadable one is deleted and the
+profile's copy kept. It is idempotent, and a run with nothing left to move
+only looks up absent items. `SessionStore` stays implemented for `CredentialStore` for that
 reading. Each old item read by a newly built binary costs one macOS dialog,
 once; test and sandbox sign-ins are deleted beforehand rather than moved,
 with `security delete-generic-password -s piekstra.<bin> -a <account>`,
 which, as an Apple tool, raises none. A downgrade past the move finds no
-sign-in.
+sign-in and means signing in again; that sign-in is newer than the moved
+copy, so moving again after an upgrade keeps it.
 
 **Prompts.** A binary signed without a team ID (`pk-cli-codesign`) is a new
 code identity to the keychain at every build, so its first read of the
