@@ -257,6 +257,49 @@ fn a_sign_in_after_a_downgrade_wins_over_the_older_copy() {
     assert!(old.get(&older).unwrap().is_none());
 }
 
+#[test]
+fn when_both_copies_exist_the_readable_and_newer_one_wins() {
+    // (profile's copy, old item, the token kept)
+    let cases = [
+        (
+            obtained("org-1", PATIENT, "profile", 100),
+            "not a session".to_string(),
+            "profile",
+        ),
+        (
+            "not a session".to_string(),
+            obtained("org-1", PATIENT, "old", 100),
+            "old",
+        ),
+        (
+            obtained("org-1", PATIENT, "profile", 100),
+            obtained("org-1", PATIENT, "old", 100),
+            "profile",
+        ),
+    ];
+    for (held, item, kept) in cases {
+        let dir = Dir::new();
+        let keys = Arc::new(MemoryKeys::new());
+        let vault = dir.vault(&keys);
+        let sessions = ProfileSessions::new(&vault, profile("adult1"));
+        let acct = account("org-1", PATIENT);
+        vault
+            .put(&sessions.entry_name(&acct).unwrap(), &Secret::new(held))
+            .unwrap();
+        let old = MemoryKeys::new();
+        old.set(&acct, &Secret::new(item)).unwrap();
+        migrate_sessions(&old, &sessions, std::slice::from_ref(&acct), &dir.lock()).unwrap();
+        assert_eq!(
+            sessions.load(&acct).unwrap().unwrap().tokens.access_token,
+            kept
+        );
+        assert!(
+            old.get(&acct).unwrap().is_none(),
+            "the old item is gone either way"
+        );
+    }
+}
+
 /// A keychain whose errors quote the account, as the real one's can.
 struct Quoting;
 
