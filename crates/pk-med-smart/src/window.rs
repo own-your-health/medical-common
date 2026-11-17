@@ -5,8 +5,9 @@
 //! `browser-profile-<profile>` under the CLI's data directory), so one
 //! login's cookies never sign in another, and a provider that remembers the
 //! device remembers it per login. Pages the provider needs signed in first
-//! open as tabs before the sign-in's own address (Kaiser Permanente's Epic
-//! answers its authorize address only inside a kp.org session). The window
+//! open as tabs before the sign-in's own address: Kaiser Permanente's Epic
+//! organizations answer their authorize page only inside a session from
+//! kp.org's sign-on on the same domain, so mychart opens that first. The window
 //! is closed by dropping it, which asks Chrome to quit over its debug port
 //! so the cookies it just received are written, and the next sign-in in
 //! that profile finds them.
