@@ -8,7 +8,7 @@
 //! |---|---|
 //! | `GET /fhir/.well-known/smart-configuration` | SMART discovery |
 //! | `GET /fhir/metadata` | a CapabilityStatement with the `oauth-uris` extension |
-//! | `GET /authorize` | a 302 to the loopback redirect with `code`, `state` and `iss`; PKCE S256 required |
+//! | `GET /authorize` | a 302 to the redirect asked for (the loopback, or a page registered with `accept_redirect`) with `code`, `state` and `iss`; PKCE S256 required |
 //! | `POST /token` | the authorization-code grant (the verifier checked), the refresh grant (rotating), the JWT-bearer grant |
 //! | `POST /register` | dynamic registration (RFC 7591) |
 //! | `GET /fhir/<Type>/<id>`, `GET /fhir/<Type>?…` | the synthetic patient's resources, searches paged by `_page` |
