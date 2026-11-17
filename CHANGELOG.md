@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- DESIGN.md §3.6: the design of the unattended sign-in. It covers a portal
+  login item per organization and login, one-time codes from TOTP, email
+  or forwarded texts, the run from the authorization address to the code
+  at the listener, the record and consent rules, the visible window and
+  its reasons, the rails against locking an account, Okta for
+  athenahealth, each vendor's terms, and what goes in cli-common. Tests
+  is now §3.7. No code change.
+
 ## v0.5.0 — 2026-11-16
 
 Pins cli-common v0.32.0 for every `pk-cli-*`. A consumer moves its own

@@ -13,7 +13,7 @@ gives a refused reference its base and `is_under` (§2.1) and adds the
 `invalid_reference` skip code (§1.4); v0.4.9 reads what a search's answer
 says it left out (`withheld`, §2.2); v0.5.0 moves to cli-common v0.32.0 and
 sends a registered `https` page as the redirect (`SmartApp::redirect_uri`,
-§3.1).
+§3.1). §3.6 designs the unattended sign-in, not yet built.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -752,7 +752,264 @@ Every method defaults to SMART as written (`NoQuirks`).
 | `send_aud` | `true` | a server that refuses `aud` |
 | `send_nonce` | `true` | a server that refuses `nonce`; nothing is checked then |
 
-### 3.6 Tests
+### 3.6 Unattended sign-in (designed, not built)
+
+The authorization-code grant of §3.1, run without the person: the first
+grant for an organization and person, and a new one when a refresh token
+stops working (§3.3's `refused_at`; athenahealth's refresh token lasts 90
+days). Exports and renewals never come here: they run on the stored
+session. The person's portal password comes from the keychain, the
+one-time code from a TOTP seed, their email or their forwarded texts, and
+the record and the consent are chosen by rule. A page the rules do not
+recognise opens a visible window instead.
+
+What it never does, on any vendor:
+- solve a captcha, or evade a bot check or a risk engine: no forged device
+  profile, no masked browser fingerprint, no borrowed browser
+  `User-Agent`, no proxy. A challenge stops the run and opens the window;
+- run on a vendor before that vendor's patient-app and site terms are read
+  and the user has ruled on them (§3.6.8);
+- log or print a page body, a form value, a cookie, a URL's query, a
+  record's name, or any part of the credentials.
+
+#### 3.6.1 Mechanism and policy
+
+| Piece | Crate | What it is |
+|---|---|---|
+| `Totp` (RFC 6238), `CodeSource`, `MessagesInbox` | cli-common `pk_cli_auth::otp` | one-time codes from a seed, a mailbox (`GroMailbox`, there since v0.15.1) or Messages |
+| `WebSession` | cli-common `pk-cli-http` | a cookie jar, redirects stepped one at a time against a host allowlist, `https` only, a hop cap and a deadline. A `Location` with the default port (Epic writes `https://fhir.epic.com:443/…`) is requested without it, since IIS answers a `Host` of `fhir.epic.com:443` with a 404 |
+| `forms(html)` | cli-common `pk-cli-scrape` | a page's forms: action, method, inputs, buttons |
+| `okta::Idx`, `okta::Classic` | cli-common `pk-cli-auth` | Okta's own sign-in API, for any Okta organization (§3.6.7) |
+| `LoginGuard` | cli-common `pk-cli-auth` | the rails that keep a script from locking an account (§3.6.6) |
+| headless Chrome (`pk_cli_browser::Driver`) | cli-common `pk-cli-browser` | only when a portal needs a browser and its terms allow scripted sign-in; none does yet |
+| `PortalLogin`, `PortalRecipe`, `SmartSignIn::finish_unattended`, the record check | pk-med-smart | the SMART glue: from §3.1's address to the code at the listener |
+| a portal's recipe | each CLI | which pages, fields and buttons, which code channels, which consent choices |
+
+A recipe never holds a credential: it names the fields, and the mechanism
+fills them (§3.6.4).
+
+#### 3.6.2 The portal login: one keychain item per organization and login
+
+Service `piekstra.<bin>`, account `portal/<organization>/<login>`, with
+each part percent-encoded as in §3.2. `<organization>` is the CLI's
+`--org` value. A CLI whose one login serves every organization (athena)
+uses one name for it, such as `athenahealth`. `<login>` is the person label of
+whoever owns the portal account. One JSON item, format `portal-login/1`:
+
+| Field | |
+|---|---|
+| `format` | 1 |
+| `username`, `password` | the portal login |
+| `totp_seed` | optional: the authenticator seed, base32 or an `otpauth://` URI |
+| `records` | optional: person label to the record's name as the portal lists it, for a login that reaches more than one record (a caregiver's) |
+| `device` | optional: what the portal keeps to remember a device (MyChart's `DeviceId` and its remember cookies). It is written back after each run, so a portal that remembers a device asks for fewer codes |
+| `refused_at` | set by the CLI when the portal refuses the password (§3.6.6) |
+
+The item is written by `<bin> auth portal set --org <ORG> --login <LOGIN>`, which reads
+the JSON on stdin, never from argv. `<bin> auth portal status` says which
+fields are present (`password: true`, `totp_seed: false`, `records: 2`),
+never a value, and `<bin> auth portal forget` deletes the item. The
+1Password-to-Keychain caching pass pipes each `op` read into `auth portal set`,
+so one `op` session covers every portal. A rewrite clears `refused_at`.
+pk-med-smart supplies `PortalLogin` (read, write, the stdin parse, the
+refusal flag) and the account rule; each CLI wires the commands.
+
+`auth login --org <ORG> --label <WHO>` signs in through the login named
+`<WHO>`. A record reached through someone else's login, such as a
+parent's caregiver login, says so with `--login <LOGIN>`, or with the CLI's
+config `logins.<WHO> = <LOGIN>`.
+
+#### 3.6.3 One-time codes
+
+`CodeSource` gives a code for a request: the channel, the moment the code
+was asked for, the recipe's matcher (sender, `MailQuery`, `CodeShape`)
+and a deadline (default 5 minutes). Sources, in the order the mechanism
+tries them:
+
+| Source | Needs | Rules |
+|---|---|---|
+| `Totp` | `totp_seed` | never the same time step twice. The person enrolls the seed once, where the portal offers an authenticator app. MyChart's enrollment page says "Do not save, store, or write down your secret key", so keeping one is the user's call |
+| `GroMailbox` | a `gro` profile for the address the portal writes to | only a message after the request, matched by the recipe's `MailQuery` |
+| `MessagesInbox` | texts forwarded to this Mac, and Full Disk Access for the app that runs the CLI | only where a portal sends codes by text alone; reads `~/Library/Messages/chat.db` read-only with `/usr/bin/sqlite3`; only a message after the request, from the recipe's sender |
+
+The recipe says which channels the portal offers and how to choose one on
+its page; the login's item and the machine say which sources exist. Each
+code is used once. A refused code gets one more, freshly sent, and then
+the run stops.
+
+#### 3.6.4 The run
+
+`SmartSignIn::finish_unattended(&self, &mut WebSession, Unattended)`
+returns the code, or `NeedsPerson(reason)`. `Unattended` carries the
+recipe, the `PortalLogin`, the code sources, the person label, and the
+patient id a previous sign-in for that label recorded, if any.
+
+1. `begin` (§3.1) has bound the listener and built the address.
+2. `WebSession` GETs the address with a fresh cookie jar and steps each
+   redirect itself. Each hop must be `https` and go to the authorization
+   endpoint's host or a host the recipe names. The run allows at most 30
+   hops and 3 minutes, plus the code wait.
+3. Each page goes to `PortalRecipe::step`, which returns one action:
+   submit a form (with `fill_username(field)`, `fill_password(field)` and
+   `fill_code(field)` for the mechanism to fill, or `fill_with(field, f)`
+   for a portal that wraps them, as MyChart's `LoginInfo` carries both
+   base64-encoded in JSON), follow a link, ask for a code, choose a record
+   from a list, or `NeedsPerson(reason)`. The recipe judges each answer by
+   the page it lands on, never by its status: MyChart answers a refused
+   password with a 302, to its sign-in page with `error=`.
+4. A `Location` that starts with `SmartSignIn::redirect_uri()` ends the
+   walk. Its query goes to `listener_uri()`, as §3.1's forwarding page
+   would send it, so the listener checks `state` and `iss` as for a person.
+   The registered https page itself is never fetched.
+5. The exchange is §3.1's. The record check follows. The session is stored
+   under `RefreshLock::store_signin` (§3.1 step 5).
+
+Choosing the record. The recipe lists the portal's choices as (value,
+name as shown, whether the portal marks it as the account's own):
+- `records` names the person: the one choice whose name matches it,
+  compared case-folded with whitespace collapsed. No match, or more than
+  one, is `record_not_found` or `record_ambiguous`.
+- `records` does not name the person and the person is the login's owner:
+  the choice marked as the account's own, else the only choice. Anything
+  else is `record_not_found`.
+
+The record check. With a patient id from a previous sign-in for the label,
+the new session must name the same patient. On a first sign-in
+through `records`, the new session's `Patient` must carry the stored name.
+A mismatch is `other_record`: the tokens are dropped unstored, and the run
+is exit 3. Names are compared in memory and never printed.
+
+Consent. The recipe approves the app's consent page as its CLI's policy
+says. That policy is every scope the app asked for, and the longest access
+the portal offers. At MyChart that is 1 year, the last of the seven
+`accessDurationIndex` choices, so a MyChart grant is made again yearly.
+
+#### 3.6.5 `NeedsPerson`: the visible window
+
+| Reason | |
+|---|---|
+| `disabled` | unattended sign-in is off for this organization |
+| `no_login` | no `portal/<organization>/<login>` item |
+| `password_refused` | the portal refused the password, now or on an earlier run (`refused_at`) |
+| `locked` | the portal says the account is locked or needs a reset |
+| `code_unavailable` | no source gave a code before the deadline |
+| `code_refused` | the portal refused two codes |
+| `captcha` | the page carries a captcha or a bot check |
+| `risk_challenge` | the portal asks for more than the recipe knows (an unfamiliar device, a new question) |
+| `terms_update` | the portal wants new terms accepted |
+| `record_not_found`, `record_ambiguous`, `other_record` | the record rule above |
+| `unrecognised_page` | a page no step of the recipe matches |
+
+Reasons are an open set, like skip codes (§1.4).
+- **The window.** On `NeedsPerson` the CLI opens §3.1's same address in the
+  system browser, while the listener waits on its timeout.
+- **What it writes.** One stderr line: `needs a person: <reason> at
+  <organization> for <label>`. In `--json`, its `auth login` document
+  carries `"unattended": {"outcome": "needs_person", "reason": "<reason>"}`.
+- **The twapp action.** The agent session that started the CLI in the
+  background records it: what to finish, where, and why. The CLI itself
+  never calls twapp.
+- **Unrecognised pages.** The error carries the page's shape, never its
+  text: the URL path, each form's action path, its input names and
+  types, and its button count. That is enough to extend the recipe.
+
+#### 3.6.6 The rails (`LoginGuard`)
+
+- **A refused password is never tried again.** It sets the item's
+  `refused_at`. Until `auth portal set` rewrites the item, every run goes
+  straight to `password_refused`, so a wrong cached password can never
+  lock the account.
+- **One attempt per 15 minutes.** At most one unattended attempt per
+  organization and login in that window, recorded in a state file beside
+  the refresh lock, so a loop cannot hammer a portal.
+- **At most two codes per run.**
+- **The CLI's own `User-Agent`.**
+- **Under the refresh lock**, as §3.1.
+- **Off by default, per organization.** A CLI turns it on for a vendor
+  only after the terms ruling (§3.6.8). `auth login --interactive` always
+  skips it.
+
+#### 3.6.7 Okta (athenahealth)
+
+athenahealth's patient identity is the Okta organization at
+`identity.athenahealth.com`. Its custom authorization server
+`ausu5cwvrZnWYasjS296` is also served at
+`myidentity-support.platform.athenahealth.com`. The organization runs
+Okta Identity Engine: `/.well-known/okta-organization` answers
+`"pipeline": "idx"`.
+
+Okta documents `/api/v1/authn` as a Classic Engine API. In Identity Engine
+it does not reach app-specific sign-on policies, and Okta does not say
+that its `sessionToken` completes `/authorize` there. So cli-common's
+`okta` module has two clients:
+- **`Idx`** speaks the JSON API that Okta's hosted sign-in page itself
+  calls. It introspects the state the page carries, then follows the
+  remediation forms each answer names (`identify`,
+  `select-authenticator-authenticate`, `challenge-authenticator`) to
+  `success`. The success link continues the authorize redirects. The
+  forms name their own fields, so the client hard-codes only the
+  remediation names.
+- **`Classic`** runs `/api/v1/authn`, then
+  `/api/v1/authn/factors/{id}/verify` with the `stateToken` and
+  `passCode` when the answer is `MFA_REQUIRED`. It passes the
+  `sessionToken` on to `/authorize`. It is for a Classic organization.
+
+Which client athenahealth's sign-in takes is the first thing checked
+against its Preview sandbox. Okta's own limits apply to both clients:
+- 4 `/api/v1/authn` calls per second per user;
+- one SMS challenge per device every 30 seconds;
+- a lockout answered `LOCKED_OUT`, or a 401 `E0000004` when the
+  organization hides lockouts. Either maps to `locked`.
+
+#### 3.6.8 Vendors
+
+| Vendor | Sign-in | Second factor | Protections | Terms on scripted access | Route |
+|---|---|---|---|---|---|
+| athenahealth (athena) | Okta Identity Engine, as above | to be reported by athena-cli | to be reported | to be reported | `okta::Idx` once the terms are read |
+| Epic MyChart (mychart; the sandbox, NYU Langone) | form posts in one jar: the authorize redirects end at `/Authentication/Login`; form `#actualLogin` posts to `/Authentication/Login/DoLogin` with its hidden fields and `LoginInfo`; consent form `#authorizeform` posts `patientIndex` (0 for the account's own; a proxy list sets `patient`) and `accessDurationIndex`; the last redirect carries the code. The whole run passes on the sandbox as a synthetic patient | email, text, authenticator app or passkey, as the organization enables; a remembered device skips it until a date; the code pages (`SecondaryValidation/SendCode`, `Validate`) are read from Epic's script, not yet run | `captchaRequired` on the sign-in page (false on the sandbox and at NYU); hCaptcha or reCAPTCHA when an organization turns one on; F5 at NYU | to be reported by mychart-cli | form posts once the terms are read; `captcha` when `captchaRequired` is true |
+| Kaiser Permanente (kp.org; also the gate to Kaiser's Epic organizations, whose OAuth start needs a kp.org session in the same jar) | PingFederate HTML form (`pf.username`, `pf.pass`), no JavaScript needed | a code on every sign-in, by email or text, valid 20 minutes; no authenticator app offered | PingOne Risk device profiling (fingerprintjs2), reCAPTCHA wired but off, F5 WAF; `robots.txt` disallows `/as/authorization.oauth2` | forbidden on the plain reading: no "robot … or other automatic device, program, algorithm or methodology" may "access … any portion of the Site" (the text as fetched lost its list structure) | none unless the user rules otherwise; a forged device profile is never sent |
+| UnitedHealthcare (HealthSafe ID) | Angular single-page app | not mapped | ThreatMetrix device profiling, reCAPTCHA | forbidden: "automated software, devices, scripts, robots", and circumventing a block | the visible window only (the user's decision to sign in by hand) |
+
+Tiers in the brief's order: 1, an identity provider's own API (Okta); 2,
+form posts (MyChart, kp.org); 3, headless Chrome, for which no portal
+qualifies yet.
+
+#### 3.6.9 Tests
+
+- Offline. §2.3's mock server gains a mock portal:
+  - a sign-in form with a hidden anti-forgery input;
+  - a code page for each channel;
+  - a record list of synthetic names;
+  - a consent page;
+  - an Okta IDX-shaped JSON flow;
+  - faults for a refused password, a captcha page, an unknown page, a
+    lockout and another record.
+
+  `Totp` is checked against RFC 6238's Appendix B vectors. The mailbox is
+  a fake. A synthetic `chat.db` is built at run time.
+- Live, by hand and never in CI. The targets are Epic's sandbox, with the
+  MyChart logins fhir.epic.com documents for its synthetic patients, and
+  athenahealth's Preview sandbox, with its test patient login. Those
+  logins sit in test-service keychain items like real ones, and are never
+  committed. A run reports counts, statuses and exit codes.
+- No run against a real portal before that vendor's terms ruling.
+
+#### 3.6.10 Build order
+
+1. cli-common, one release:
+   - `Totp`, `CodeSource` and `MessagesInbox`;
+   - `WebSession` and `forms`;
+   - `okta::Idx` and `okta::Classic`;
+   - `LoginGuard`.
+2. pk-med-smart v0.6.0: `PortalLogin`, `PortalRecipe`,
+   `finish_unattended`, the record check, and the mock portal.
+3. The CLIs:
+   - athena's Okta recipe, against Preview;
+   - mychart's MyChart recipe, against Epic's sandbox;
+   - kp and uhc only as their terms rulings allow.
+4. Headless Chrome only when a portal needs it and its terms allow it.
+
+### 3.7 Tests
 
 The sign-in, renewal and registration are tested against §2.3's mock
 server over the real HTTP transport, with a `MemoryStore`. A CLI's own
