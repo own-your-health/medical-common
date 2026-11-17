@@ -1,7 +1,30 @@
 # Changelog
 
-## Unreleased
+## v0.5.0 — 2026-11-16
 
+Pins cli-common v0.32.0 for every `pk-cli-*`. A consumer moves its own
+`pk-cli-*` to v0.32.0 in the same change.
+
+- `pk-med-smart`: `SmartApp` is `#[non_exhaustive]` and built with
+  `SmartApp::new(app, client, ports)`, which takes what the struct literal
+  did; a literal no longer compiles outside the crate. Its fields stay
+  public.
+- `pk-med-smart`: `SmartApp::redirect_uri(uri)` sends a registered `https`
+  page as the redirect instead of the listener's
+  `http://127.0.0.1:<port>/callback`, for a vendor that takes only `https`
+  redirects in production, as Epic does. The page sends the browser on to
+  the listener with the query unchanged; `state`, `iss` and the PKCE
+  verifier are checked as before, and the exchange names `uri`. The app
+  names the one port the page forwards to. `begin` refuses, as exit 2, a
+  `uri` that is not `https`, has no host, names a user or carries a
+  fragment, and any other number of ports (cli-common's
+  `AuthorizationCodeFlow::redirect_uri`). `SmartSignIn::listener_uri()` is
+  where the answer must arrive (DESIGN.md §3.1).
+- `pk-med-fhir` `test-util`: `MockServer::accept_redirect(uri)` accepts a
+  registered `https` redirect besides the loopback (DESIGN.md §2.3).
+- The personal-data scan ends an address's domain at a URL's path, port or
+  query, so `https://user@host.test/path` is read as the dummy domain
+  `host.test`.
 - DESIGN.md §1.4: the shape of the `forbidden` skip for withheld results.
   There is one per type and distinct withheld line in a stream, with
   `resource_type` set and `id` and `search` unset, because what a server

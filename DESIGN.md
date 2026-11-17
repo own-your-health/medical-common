@@ -11,7 +11,9 @@ keeps pk-med-smart's remedies apart from its messages (§3); v0.4.7 adds
 `ReferenceTarget::read`, which keeps a refused id apart (§2.1); v0.4.8
 gives a refused reference its base and `is_under` (§2.1) and adds the
 `invalid_reference` skip code (§1.4); v0.4.9 reads what a search's answer
-says it left out (`withheld`, §2.2).
+says it left out (`withheld`, §2.2); v0.5.0 moves to cli-common v0.32.0 and
+sends a registered `https` page as the redirect (`SmartApp::redirect_uri`,
+§3.1).
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -526,7 +528,9 @@ or none) and registration. `Fault` makes chosen
 requests fail: a 429 with `Retry-After`, an OperationOutcome error, a 401,
 a 503. `withhold(type, text)` adds a `suppressed` warning with that text
 to every page of the type's searches, in Epic's shape, its results served
-as before. Every value in it is synthetic: `crates/pk-med-fhir/fixtures/README.md`
+as before. The authorize step takes a loopback redirect, and
+`accept_redirect(uri)` adds a registered `https` page, which a test
+follows as the page would, to the listener. Every value in it is synthetic: `crates/pk-med-fhir/fixtures/README.md`
 lists the dummy shapes, and a test checks them positively.
 
 `pk_med_records::test_util::write_synthetic_stream` writes that patient as
@@ -582,10 +586,26 @@ one match serves both crates.
    for `openid`, it adds a fresh `nonce` (32 random bytes, base64url;
    athenahealth requires one with `openid`). When discovery named
    an issuer, an answer whose `iss` differs is refused (exit 3). An answer
-   without `iss` passes (cli-common v0.31.1 has no way to require it), and
+   without `iss` passes (cli-common v0.32.0 has no way to require it), and
    the `/metadata` fallback names no issuer at all, so there the RFC 9207
    check does not run. `SmartSignIn::issuer_checked()` says whether it can,
    and the session keeps the issuer it was bound to.
+
+   `SmartApp::new(app, client, ports)` builds the app; it is
+   `#[non_exhaustive]`, so a later field comes with a default. The redirect
+   is the listener's own `http://127.0.0.1:<port>/callback` unless
+   `.redirect_uri(uri)` names a registered `https` page, for a vendor that
+   takes only `https` redirects in production (Epic: "An https protocol is
+   required for use in a production environment"). The page sends the
+   browser on to the listener with the query unchanged, so `state` and
+   `iss` are checked as before, and the exchange names `uri` with the PKCE
+   verifier, which never leaves the machine. The code passes through the
+   page's host, whose logs can see it; it is single-use and useless without
+   the verifier. The page forwards to one port, so the app names exactly
+   that one. `begin` refuses (exit 2, from cli-common) a `uri` that is not
+   `https`, has no host, names a user or carries a fragment, and any other
+   number of ports. `SmartSignIn::redirect_uri()` is the redirect the
+   address sent, and `listener_uri()` is where the answer must arrive.
 4. **Exchange.** `SmartSignIn::wait_for_code(timeout, on_refused)`, then
    `exchange(oauth, client, code, organization, now)` returns a
    `SmartSession`. When a `nonce` was sent, an ID token that does not carry
@@ -917,10 +937,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.9" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.9" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.9" }   # features = ["rsa"] for §3.4
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.4.9" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.5.0" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.5.0" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.5.0" }   # features = ["rsa"] for §3.4
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.5.0" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -943,3 +963,4 @@ does not convert to the other.
 | v0.4.7 | v0.31.1 |
 | v0.4.8 | v0.31.1 |
 | v0.4.9 | v0.31.1 |
+| v0.5.0 | v0.32.0 |

@@ -1417,8 +1417,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-auth"
-version = "0.31.1"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.31.1#a8ad14976febd0782d9830388d95b86e8713028a"
+version = "0.32.0"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.32.0#0b9b6f0f919142db70a4b3bff983b5791b44b104"
 dependencies = [
  "clap",
  "getrandom 0.4.3",
@@ -1432,8 +1432,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-core"
-version = "0.31.1"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.31.1#a8ad14976febd0782d9830388d95b86e8713028a"
+version = "0.32.0"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.32.0#0b9b6f0f919142db70a4b3bff983b5791b44b104"
 dependencies = [
  "clap",
  "libc",
@@ -1443,8 +1443,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-http"
-version = "0.31.1"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.31.1#a8ad14976febd0782d9830388d95b86e8713028a"
+version = "0.32.0"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.32.0#0b9b6f0f919142db70a4b3bff983b5791b44b104"
 dependencies = [
  "clap",
  "pk-cli-core",
@@ -1454,8 +1454,8 @@ dependencies = [
 
 [[package]]
 name = "pk-cli-secrets"
-version = "0.31.1"
-source = "git+https://github.com/piekstra/cli-common?tag=v0.31.1#a8ad14976febd0782d9830388d95b86e8713028a"
+version = "0.32.0"
+source = "git+https://github.com/piekstra/cli-common?tag=v0.32.0#0b9b6f0f919142db70a4b3bff983b5791b44b104"
 dependencies = [
  "clap",
  "keyring",
@@ -1468,7 +1468,7 @@ dependencies = [
 
 [[package]]
 name = "pk-med-dicom"
-version = "0.4.9"
+version = "0.5.0"
 dependencies = [
  "flate2",
  "pk-cli-core",
@@ -1477,7 +1477,7 @@ dependencies = [
 
 [[package]]
 name = "pk-med-fhir"
-version = "0.4.9"
+version = "0.5.0"
 dependencies = [
  "base64 0.22.1",
  "pk-cli-core",
@@ -1491,7 +1491,7 @@ dependencies = [
 
 [[package]]
 name = "pk-med-records"
-version = "0.4.9"
+version = "0.5.0"
 dependencies = [
  "pk-cli-core",
  "pk-cli-http",
@@ -1504,7 +1504,7 @@ dependencies = [
 
 [[package]]
 name = "pk-med-smart"
-version = "0.4.9"
+version = "0.5.0"
 dependencies = [
  "base64 0.22.1",
  "getrandom 0.4.3",

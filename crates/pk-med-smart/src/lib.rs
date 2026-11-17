@@ -3,7 +3,8 @@
 //!
 //! 1. [`discover`] the server's endpoints.
 //! 2. [`begin`] a sign-in with a [`ScopeSet`]: PKCE S256, `state`, `aud`, the
-//!    loopback redirect. Print and open [`SmartSignIn::url`], then
+//!    loopback redirect, or a registered `https` page that forwards to it
+//!    ([`SmartApp::redirect_uri`]). Print and open [`SmartSignIn::url`], then
 //!    [`SmartSignIn::wait_for_code`] and [`SmartSignIn::exchange`] it.
 //! 3. Store the [`SmartSession`] (one keychain item per organization and
 //!    patient, [`account`]) under `RefreshLock::store_signin`.
