@@ -1,7 +1,22 @@
 # Changelog
 
-## Unreleased
+## v0.6.2 — 2026-11-17
 
+Pins cli-common v0.33.2 for every `pk-cli-*`; a consumer moves its own
+`pk-cli-*` to v0.33.2 in the same change.
+
+- `pk-med-records`: `RECORDS_FILES` (`"records-files"`), the `cli-info/v1`
+  capability of a CLI whose `patients list` and `records export` read
+  downloaded files with `--files <DIR>` and no login. DESIGN.md §1.1 now
+  names that source: the flag, its `<PREFIX>_FILES` fallback, how it and
+  `--profile` exclude each other (both are exit 2; a flag beats the other
+  source's variable), which commands take it (`patients list` and
+  `records export` must, `documents` may, `api` never), what the stream
+  header says (`method: portal`, no `patient.session`, no `label`, so
+  `--patient` takes the id), and that both sources give a member the same
+  `organization` and `patient.id`, or the files source an organization id
+  of its own. Before, §1.1 said only that "a flag chooses" it,
+  so a records store could not reach it.
 - Pins cli-common v0.33.2, whose vault creates its `.key.lock` `0600` and
   narrows one left at the umask's mode. It was empty, in a `0700`
   directory. No API change; a consumer moves to it with the next
