@@ -27,6 +27,7 @@ feature-check:
 	$(CARGO) clippy -p pk-med-records --lib --features test-util -- -D warnings
 	$(CARGO) clippy -p pk-med-smart --lib -- -D warnings
 	$(CARGO) clippy -p pk-med-smart --lib --features rsa -- -D warnings
+	$(CARGO) clippy -p pk-med-smart --lib --features browser -- -D warnings
 	$(CARGO) clippy -p pk-med-dicom --lib -- -D warnings
 	$(CARGO) clippy -p pk-med-dicom --lib --features test-util -- -D warnings
 

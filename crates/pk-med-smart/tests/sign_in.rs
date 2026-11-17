@@ -401,6 +401,34 @@ fn a_lapsed_session_is_renewed_once_with_its_scope() {
 }
 
 #[test]
+fn a_profiles_session_renews_in_its_vault_entry() {
+    use pk_cli_auth::vault::{MemoryKeys, Vault};
+    use pk_cli_config::profile::ProfileName;
+    use pk_med_smart::ProfileSessions;
+
+    let mock = MockServer::start();
+    let client = ClientAuth::public(CLIENT_ID);
+    let mut session = sign_in(&mock, &client, &NoQuirks);
+    session.tokens.expires_at = Some(NOW - 1);
+    let (lock, oauth) = (lock(), oauth());
+    let keys = std::sync::Arc::new(MemoryKeys::new());
+    let vault = Vault::new(std::sync::Arc::clone(&keys), lock.1.join("vault"));
+    let store = ProfileSessions::new(&vault, ProfileName::parse("adult1").unwrap());
+    lock.store_signin(|| store.save(&session)).unwrap();
+
+    let renewer = Renewer::new(&store, &lock, &oauth, &client, &NoQuirks);
+    let renewed = renewer.fresh(&session.account(), NOW).unwrap();
+    assert_ne!(renewed.tokens.access_token, session.tokens.access_token);
+    let stored = store.load(&session.account()).unwrap().unwrap();
+    assert_eq!(stored.tokens.access_token, renewed.tokens.access_token);
+    assert_eq!(
+        vault.names().unwrap(),
+        [format!("adult1/{}", &session.account()["smart/".len()..])]
+    );
+    assert_eq!(keys.writes(), 1, "one keychain item");
+}
+
+#[test]
 fn a_refused_grant_is_recorded_and_the_next_use_tries_again() {
     let mock = MockServer::start();
     let client = ClientAuth::public(CLIENT_ID);

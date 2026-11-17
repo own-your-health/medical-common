@@ -17,6 +17,13 @@ pub const PATIENT_LIST_SCHEMA: &str = "patient-list/v1";
 pub const PROVENANCE_SCHEMA: &str = "provenance/v1";
 pub const EXPORT_SCHEMA: &str = "records-export/v1";
 
+/// The `cli-info/v1` capability of a CLI whose login commands take
+/// `--profile <NAME>` (DESIGN.md §1.1), `records export` among them. A
+/// records store refuses to pass `--profile` to a provider without it,
+/// which predates profiles. The list of profiles is cli-common's
+/// `profile-list/v1` (`pk_cli_config::profile::ProfileList`).
+pub const LOGIN_PROFILES: &str = "login-profiles";
+
 /// An organization a CLI can reach: a provider's FHIR server, or an
 /// insurer's. Also the stream header's `organization`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

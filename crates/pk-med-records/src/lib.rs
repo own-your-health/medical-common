@@ -20,7 +20,7 @@ pub mod test_util;
 
 pub use dto::{
     org_list, patient_list, Organization, PatientContext, Provenance, ProvenanceSource,
-    RecordsExport, SourceResource, PROFILE,
+    RecordsExport, SourceResource, LOGIN_PROFILES, PROFILE,
 };
 pub use export::{create_export_file, ExportFile, EXPORT_FILE, INCOMPLETE_FILE};
 pub use pk_med_fhir::RawResource;

@@ -13,7 +13,10 @@ gives a refused reference its base and `is_under` (§2.1) and adds the
 `invalid_reference` skip code (§1.4); v0.4.9 reads what a search's answer
 says it left out (`withheld`, §2.2); v0.5.0 moves to cli-common v0.32.0 and
 sends a registered `https` page as the redirect (`SmartApp::redirect_uri`,
-§3.1). §3.6 says why no portal sign-in is scripted.
+§3.1); v0.6.0 moves to cli-common v0.33.0 and adds profiles, one per login
+(§1.1), with every session in the CLI's one-item vault and the move into
+it (§3.2), and a sign-in window per profile (§3.1). §3.6 says why no portal
+sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -34,14 +37,21 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 ### 1.1 Commands
 
 ```text
-<bin> orgs list                                   # org-list/v1
-<bin> orgs search <TEXT>                          # org-list/v1
-<bin> auth login --org <ORG> [--label <WHO>]      # browser sign-in, PKCE, loopback redirect
-<bin> patients list                               # patient-list/v1
-<bin> records export --patient <ID> [--since <YYYY-MM-DD>] --ndjson    # records-stream/v1 on stdout
-<bin> records export --patient <ID> [--since <YYYY-MM-DD>] -o <DIR>    # the same stream to <DIR>/records.ndjson (records.incomplete.ndjson if it ends incomplete); records-export/v1 on stdout, its path the file written
-<bin> documents list | download                   # documents/v1 (§1.7)
-<bin> api GET <PATH>                              # passthrough, GET only
+<bin> profiles list                                         # profile-list/v1
+<bin> profiles add <NAME>                                   # one profile per login (below)
+<bin> profiles remove <NAME>                                # its sign-ins, browser profile and config; asks first
+<bin> profiles migrate <NAME>                               # sign-ins kept before profiles, into <NAME>
+<bin> orgs list                                             # org-list/v1
+<bin> orgs search <TEXT>                                    # org-list/v1
+<bin> auth login --profile <NAME> --org <ORG> [--label <WHO>]   # browser sign-in, PKCE, loopback redirect
+<bin> auth status --profile <NAME>                          # auth-status/v1
+<bin> auth logout --profile <NAME>
+<bin> patients list --profile <NAME>                        # patient-list/v1
+<bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] --ndjson    # records-stream/v1 on stdout
+<bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] -o <DIR>    # the same stream to <DIR>/records.ndjson (records.incomplete.ndjson if it ends incomplete); records-export/v1 on stdout, its path the file written
+<bin> documents list --profile <NAME>                       # documents/v1 (§1.7)
+<bin> documents download --profile <NAME> …                 # documents/v1 (§1.7)
+<bin> api --profile <NAME> GET <PATH>                       # passthrough, GET only
 ```
 
 - `orgs search` matches `name`, `aliases` and `location`, case-insensitive.
@@ -66,6 +76,44 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
   `--ndjson` is a usage error (exit 2): the stream is the output.
 - `auth status` reports `method: "browser-session"` for a SMART sign-in
   (cli-common `pk_cli_auth::oauth`).
+
+**Profiles.** A CLI keeps one profile per login: an athenahealth account, a
+MyChart account at one organization, a kp.org account, a member-site
+account. Profile names are the household's own (`adult1`, `adult2`) and
+live in the CLI's local config only (cli-common `pk_cli_config::profile`,
+its DESIGN.md §2.5).
+
+- Every command that uses a login, a stored sign-in or records pulled
+  through one requires `--profile <NAME>`, with `<PREFIX>_PROFILE` as the
+  environment's fallback: `auth login|status|logout`, `patients list`,
+  `records export`, `documents list|download`, `api`. `orgs list|search`,
+  `profiles` and `info` take none. There is no default profile, and a lone
+  profile is never picked: a missing or unknown one is a usage error
+  (exit 2) listing the configured ones (`resolve`), or, with none, naming
+  `<bin> profiles add <NAME>`. A command that reads no login (a source of
+  downloaded files) takes none; where one command can use either, a flag
+  chooses the login-free source, and without it the login is used and
+  `--profile` is required.
+- `profiles list [--json]` is cli-common's `profile-list/v1`:
+  `{"schema": "profile-list/v1", "profiles": [{"name": "adult1"}, …]}`,
+  sorted by name. `profiles add <NAME>` adds one. `profiles remove <NAME>`
+  removes its sign-ins (`ProfileSessions::delete_all`, §3.2), its browser
+  profile (`pk_cli_browser::forget_named_profile`) and its config, and
+  asks first (piekstra-cli/1 §1.3: `--force`, exit 6 when it cannot ask).
+- A profile holds zero or more grants, each an organization and a patient
+  label (`--label`) with the patient's id, in the profile's settings
+  (`Profiles::settings`). Its sessions are in the CLI's vault, one entry
+  per grant (§3.2); relabelling a grant moves no entry.
+- `profiles migrate <NAME>` moves the sign-ins a CLI kept before profiles
+  (one keychain item each) into the profile, adding it when it is new: a
+  local command, with no network and no new approval (`migrate_sessions`,
+  §3.2).
+- `info --json` lists `"login-profiles"` (`pk_med_records::LOGIN_PROFILES`)
+  in `cli-info/v1`'s `capabilities` once the CLI's login commands take
+  `--profile`. A records store passes `--profile` only to a provider that
+  lists it, and refuses an older one rather than run it unprofiled.
+- Each profile signs in in its own Chrome profile, so one login's cookies
+  never sign in another (`SignInWindow`, §3.1).
 
 ### 1.2 `Organization` (`org-list/v1`)
 
@@ -100,7 +148,7 @@ sign-in for. `patients list` emits `Paged<PatientContext>` (`patient-list/v1`,
 | `member_role` | optional | `subscriber` or `dependent` |
 | `fhir_user` | optional | the signed-in user's `fhirUser` (`Patient/…`, `RelatedPerson/…`) |
 | `name` | optional | the name the source shows, for the person's own terminal; never in a fixture, a log or an error message |
-| `session` | optional | the keychain account holding this sign-in (`smart/<org>/<patient>`), never the token |
+| `session` | optional | the sign-in's account, `smart/<org>/<patient>` (`pk_med_smart::account`, §3.2), never the token. An opaque handle: the CLI finds the session by it within the profile the command ran as, in the vault entry `<profile>/<org>/<patient>`, or for a CLI before profiles in the keychain item of that name |
 
 ### 1.4 The records stream (`records-stream/v1`)
 
@@ -586,7 +634,7 @@ one match serves both crates.
    for `openid`, it adds a fresh `nonce` (32 random bytes, base64url;
    athenahealth requires one with `openid`). When discovery named
    an issuer, an answer whose `iss` differs is refused (exit 3). An answer
-   without `iss` passes (cli-common v0.32.0 has no way to require it), and
+   without `iss` passes (cli-common has no way to require it), and
    the `/metadata` fallback names no issuer at all, so there the RFC 9207
    check does not run. `SmartSignIn::issuer_checked()` says whether it can,
    and the session keeps the issuer it was bound to.
@@ -617,26 +665,83 @@ one match serves both crates.
    from its keychain (Kaiser's claims API), never from argv.
 5. **Store.** Call `RefreshLock::before_signin` before step 3 and store the
    session inside `RefreshLock::store_signin`, so a sign-in never races a
-   renewal.
+   renewal, in the profile's `ProfileSessions` (§3.2).
+
+**The window** (feature `browser`). `SignInWindow::open(bin, &profile,
+&sign_in, before)` opens the address in Chrome in the profile's own kept
+browser profile (cli-common `Launch::profile_name`:
+`browser-profile-<profile>` under the CLI's data directory), so one login's
+cookies never sign in another, and a provider that remembers a device
+remembers it per login. `before` opens first, one tab each: a page the
+provider needs signed in before its authorize address answers (Kaiser
+Permanente's Epic answers `…/Authentication/OAuth/Start` with a 500 without
+a kp.org session, so kaiser passes `https://healthy.kaiserpermanente.org/sign-on`).
+`open_at` takes a start page of the CLI's own instead, `https` or `http`
+on `127.0.0.1`. Drop the window once the code arrives: Chrome is asked to
+quit over its debug port, so the cookies it received are written and the
+next sign-in in that profile finds them (a kp.org session that is still
+live goes straight to consent). The system browser (`open_browser`) shares
+one cookie jar across profiles, so a profile's sign-in does not use it.
 
 `LaunchContext` reads SMART's launch context: `patient`, `encounter` and
 `need_patient_banner` from the token response, and `fhirUser` from the
 token response or the ID token. The ID token is read unverified and only
 for display. The FHIR server, not this crate, decides access.
 
-### 3.2 `SmartSession`: one keychain item per sign-in
+### 3.2 `SmartSession`: one vault entry per sign-in
 
-One JSON item per (organization, patient), at account
-`smart/<organization>/<patient>` (`account()`; `_` for a sign-in with no
-patient in its context). Each part has `%` and `/` percent-encoded
-(`a/b` is `a%2Fb`), so two different pairs never name one item; a FHIR id
-has neither character. This is the `session` a `PatientContext` names
-(§1.3). `SessionStore` is implemented for cli-common's `CredentialStore`
-(the item read and written as text, decoded here); `MemoryStore` serves
-tests. Both are `Send + Sync`, so either can sit behind a
-`FhirClient::bearer_with` source. An item that does not read is an error naming a line and a column,
-never a value, and a keychain error shows the account as
-`smart/<organization>/…`, never the patient's id.
+A sign-in is named by `account(organization, patient)`,
+`smart/<organization>/<patient>` (`_` for a sign-in with no patient in its
+context). Each part has `%` and `/` percent-encoded (`a/b` is `a%2Fb`), so
+two different pairs never name one session; a FHIR id has neither
+character. The patient is the FHIR id, never the household's label for
+them, so relabelling moves nothing.
+
+**In a profile.** `ProfileSessions::new(&vault, profile)` is the
+`SessionStore` a CLI uses: each session is the entry
+`<profile>/<organization>/<patient>` in the CLI's vault (cli-common
+`pk_cli_auth::vault::Vault::for_binary(bin)`: XChaCha20-Poly1305 files in
+`~/.config/<bin>/vault/`, owner-only, under one keychain item). The whole
+CLI reads that one item, the vault's key, however many profiles and
+sign-ins it keeps, so a newly built or upgraded binary asks macOS once
+rather than once per sign-in. `accounts()` lists the profile's sessions;
+`delete_all()` is `profiles remove`'s. A CLI's other secrets (a
+confidential client's secret) go in the same vault under a name with a
+leading `_` (`_client-secret`), which no profile name has, so the CLI still
+reads one item and a profile's listing never includes them. The account,
+not the entry name, is the `session` a `PatientContext` names (§1.3); the
+profile is the command's.
+
+**Moving in.** `migrate_sessions(&CredentialStore::for_binary(bin),
+&sessions, &accounts, &lock)` moves sessions kept the old way, one keychain
+item at `account()` each, into a profile, under the refresh lock and with
+no network. Per account, an old item the profile does not hold, or one
+newer than the profile's copy by when its tokens were obtained, has its
+text copied, read back, compared, and only then deleted, so a failure
+leaves it for the next run; an older or unreadable one is deleted and the
+profile's copy kept. It is idempotent, and a run with nothing left to move
+only looks up absent items. `SessionStore` stays implemented for `CredentialStore` for that
+reading. Each old item read by a newly built binary costs one macOS dialog,
+once; test and sandbox sign-ins are deleted beforehand rather than moved,
+with `security delete-generic-password -s piekstra.<bin> -a <account>`,
+which, as an Apple tool, raises none. A downgrade past the move finds no
+sign-in and means signing in again; that sign-in is newer than the moved
+copy, so moving again after an upgrade keeps it.
+
+**Prompts.** A binary signed without a team ID (`pk-cli-codesign`) is a new
+code identity to the keychain at every build, so its first read of the
+vault's key waits on one "Always Allow" dialog, and an unattended run
+started before then waits on a dialog nobody answers. Installs and upgrades
+on this Mac therefore happen only when the user is present, and the first
+run after one is theirs.
+
+`MemoryStore` serves tests, and `ProfileSessions` over a vault with
+cli-common's `MemoryKeys` and a temporary directory. Every store is
+`Send + Sync`, so it can sit behind a `FhirClient::bearer_with` source. A
+session that does not read is an error naming a line and a column, never a
+value; a vault error names an entry's file, which is named by a hash, and a
+keychain error shows the account as `smart/<organization>/…`: never the
+patient's id.
 
 | Field | |
 |---|---|
@@ -776,10 +881,12 @@ the provider CLIs' sessions:
 ### 3.7 Tests
 
 The sign-in, renewal and registration are tested against §2.3's mock
-server over the real HTTP transport, with a `MemoryStore`. A CLI's own
-tests give `CredentialStore` an empty service from its
-`<PREFIX>_KEYCHAIN_SERVICE` test override, so nothing reads the real
-keychain.
+server over the real HTTP transport, with a `MemoryStore`, and renewal
+again in a profile's vault. A CLI's own tests give the vault a key store
+from its `<PREFIX>_KEYCHAIN_SERVICE` test override (an empty service) and a
+temporary directory, and `CredentialStore` the same service, so nothing
+reads the real keychain or vault. The window's tests refuse a bad page
+before any Chrome starts.
 
 ## 4. DICOM headers (crate `pk-med-dicom`)
 
@@ -958,10 +1065,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.5.0" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.5.0" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.5.0" }   # features = ["rsa"] for §3.4
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.5.0" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.0" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.0" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.0" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.0" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -985,3 +1092,4 @@ does not convert to the other.
 | v0.4.8 | v0.31.1 |
 | v0.4.9 | v0.31.1 |
 | v0.5.0 | v0.32.0 |
+| v0.6.0 | v0.33.0 |
