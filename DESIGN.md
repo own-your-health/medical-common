@@ -241,6 +241,20 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   document number), so the store's same-resource merge works. It marks each
   mapped resource with `meta.source` (`uhc:portal`, `uhc:eob-pdf`) and a
   `meta.tag` saying it was mapped.
+- Every resource carries `meta.lastUpdated`, a FHIR `instant` saying when
+  its content was current, so a store holding two versions of one resource
+  can keep the more current. It dates the content and says nothing about
+  how complete it is. The value by source:
+  - A FHIR source's resource keeps the server's value as served, since the
+    line is the server's text. One the server sent without it stays
+    without, and the header's `pulled_at` is when it was current.
+  - A resource mapped from a member or patient site gets the time the page
+    was read. The header's `pulled_at` serves.
+  - A resource parsed from a document (a statement, a downloaded record)
+    gets the document's issue date, as that day at `00:00:00Z`.
+  - It is left out only when no such time is known.
+
+  `Provenance`'s `source_resource.last_updated` is this value (§1.6).
 
 **Trailer** (`Trailer`):
 

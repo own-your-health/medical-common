@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- DESIGN.md §1.4: every resource carries `meta.lastUpdated`, the time its
+  content was current, so a store can keep the more current of two versions
+  of one resource. A FHIR source's value passes unchanged, and one it
+  omits stays omitted. A resource mapped from a site carries the time the
+  page was read. One parsed from a document carries the issue date at
+  `00:00:00Z`. No code change.
 - DESIGN.md §3.1 and `SignInWindow`'s docs: Kaiser Permanente's Epic
   organizations need no page before the authorize address. v0.6.1's docs
   said a kp.org session was missing. mychart found on 2026-11-19 that the
