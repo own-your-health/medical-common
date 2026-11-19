@@ -23,8 +23,9 @@ with the `records-files` capability (§1.1); v0.6.3 dates every resource
 with `meta.lastUpdated` and compares versions by it
 (`Provenance::supersedes`, §1.4); v0.6.4 sets apart a re-read that changed
 only its stamp (`version::decide`, §1.4); v0.6.5 types a pharmacy fill
-(`MedicationDispense`, §2.1). §3.6 says why no portal sign-in is
-scripted.
+(`MedicationDispense`, §2.1); v0.6.6 breaks a same-time tie between
+versions with other content by the later read over the same route
+(`version::decide`, §1.4). §3.6 says why no portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -265,6 +266,17 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
     takes the month's first day. A document ranks as the start of its day,
     so a site read on the day it is issued ranks after it. A producer's
     docs name the printed date it takes for each kind of document.
+  - A resource a producer builds from several of the source's records (a
+    prescription from its fills, a coverage from its statements) takes the
+    date of the latest of them, a day written as `00:00:00Z`, whether the
+    records were read from a site or parsed from documents. This rule comes
+    before the site and document rules above. Its content comes from that
+    record and from what the records share, never from the range a pull
+    covered (an earliest fill, a count of fills). A narrower pull that
+    reaches the latest record then makes the same content and files
+    nothing. A copy whose latest record changed without changing its date
+    (a fill picked up or reversed, a corrected statement) has other content
+    at the same time and replaces the held one (below).
   - Otherwise it is left out.
 
   A version's time is its `meta.lastUpdated`, read as an RFC 3339 instant
@@ -274,13 +286,15 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   last seen current. A mapped resource takes no such fallback: for a
   `--files` import the pull time is when the folder was read, not when a
   statement was current. A value that does not read as an instant counts
-  as absent. A store holding one version of a resource, given another,
-  decides by `Provenance::supersedes`:
+  as absent. `Provenance::supersedes` says which of two versions is more
+  current; a store files by `version::decide` (below), which also sets
+  apart a version with the same content and decides a tie between
+  versions with other content:
 
-  | Held | Incoming | Kept |
+  | Held | Incoming | More current |
   |---|---|---|
   | time known | time known and later | incoming |
-  | time known | time known, the same or earlier | held, so a re-import changes nothing |
+  | time known | time known, the same or earlier | held |
   | time known | time unknown | held |
   | time unknown | either | incoming: the last import wins, as before versions were dated |
 
@@ -302,8 +316,28 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   |---|---|---|---|
   | same | no | `Unchanged` | files nothing |
   | same | yes | `Refreshed` | rewrites the held copy in place and refreshes its provenance (`Provenance::refreshed_by`), adding no version |
-  | differs | yes | `Replaces` | makes the incoming version current; it may keep the held one as an earlier version |
-  | differs | no | `Older` | keeps the held version current; it may keep the incoming one as an earlier version |
+  | differs | yes, or the same time, the same route and read later | `Replaces` | makes the incoming version current; it may keep the held one as an earlier version |
+  | differs | otherwise | `Older` | keeps the held version current; it may keep the incoming one as an earlier version |
+
+  Two versions with other content at the same time are ordered by how
+  each was read. The incoming one replaces the held one only when both
+  came by the same route (the same `meta.source`, or neither has one) and
+  the incoming one was read later (`fetched_at`). That covers a document
+  reissued under the date it lists, a built resource whose latest record
+  changed without changing its date, and a newer release's mapping of the
+  same statement. Otherwise the held version stays. So re-importing an
+  older stream, which keeps its `pulled_at`, changes nothing, and two
+  routes to one resource at the same date (a statement listed on the site
+  and the same statement downloaded) do not displace each other on every
+  import. The rule has two limits:
+  - Re-reading an older file with `--files` under the same date replaces
+    the held copy, because the stream's read time is when the folder was
+    read.
+  - A correction under its original date that comes by a route other than
+    the held copy's stays `Older`.
+
+  A producer that can date a correction by a date of its own (a reissue
+  or adjudication date the source prints) avoids both.
 
 **Trailer** (`Trailer`):
 
@@ -1205,10 +1239,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.5" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.5" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.5" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.5" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1238,3 +1272,4 @@ does not convert to the other.
 | v0.6.3 | v0.33.2 |
 | v0.6.4 | v0.33.2 |
 | v0.6.5 | v0.33.2 |
+| v0.6.6 | v0.33.2 |

@@ -283,11 +283,13 @@ impl Provenance {
     /// | known | unknown | keep `held` |
     /// | unknown | known or unknown | replace |
     ///
-    /// A tie keeps `held`, so a re-import changes nothing. A version with no
-    /// known time replaces only one with none either, as the last import
-    /// did before versions were dated. A store asks it through
-    /// [`version::decide`](crate::version::decide), which first sets apart a
-    /// version that differs from `held` only in `meta.lastUpdated`.
+    /// A tie keeps `held`. A version with no known time replaces only one
+    /// with none either, as the last import did before versions were dated.
+    /// A store asks it through [`version::decide`](crate::version::decide),
+    /// which first sets apart a version that differs from `held` only in
+    /// `meta.lastUpdated` and, at the same time, lets other content replace
+    /// `held` only when it came by the same route (`meta.source`) and was
+    /// read later (`fetched_at`).
     pub fn supersedes(&self, held: &Provenance) -> bool {
         match (self.current_at(), held.current_at()) {
             (Some(new), Some(old)) => new > old,

@@ -9,9 +9,11 @@
 
 use std::collections::BTreeMap;
 
+use serde::Deserialize;
 use serde_json::value::RawValue;
 
 use crate::dto::Provenance;
+use crate::timestamp::Timestamp;
 use crate::RawResource;
 
 /// How a store files an incoming version of a resource it holds, by
@@ -25,32 +27,70 @@ pub enum Filing {
     /// and its provenance with [`Provenance::refreshed_by`], which keeps
     /// what the store decided. No version is added.
     Refreshed,
-    /// Other content, more current: the incoming version becomes current. The
-    /// store may keep the held one as an earlier version.
+    /// Other content, more current; or as current, by the same route
+    /// (`meta.source`) and read later (a document reissued under the date it
+    /// lists, a newer release's mapping): the incoming version becomes
+    /// current. The store may keep the held one as an earlier version.
     Replaces,
-    /// Other content, not more current: the held version stays current. The
-    /// store may keep the incoming one as an earlier version.
+    /// Other content, not more current, and not a later read by the same
+    /// route at the same time: the held version stays current. The store may
+    /// keep the incoming one as an earlier version.
     Older,
 }
 
 /// How a store holding `held`, filed with `held_provenance`, files
 /// `incoming`: by whether their [`content`] is the same, then by
-/// [`Provenance::supersedes`].
+/// [`Provenance::supersedes`]. At the same time, other content replaces
+/// `held` only when both came by the same route (the same `meta.source`, or
+/// neither has one) and `incoming` was read later (`fetched_at`), so a
+/// re-imported older stream changes nothing and two routes to one resource
+/// do not displace each other on every import.
 pub fn decide(
     held: &RawResource,
     held_provenance: &Provenance,
     incoming: &RawResource,
     incoming_provenance: &Provenance,
 ) -> Filing {
-    match (
-        same_version(held, incoming),
-        incoming_provenance.supersedes(held_provenance),
-    ) {
-        (true, false) => Filing::Unchanged,
-        (true, true) => Filing::Refreshed,
-        (false, true) => Filing::Replaces,
-        (false, false) => Filing::Older,
+    let later = incoming_provenance.supersedes(held_provenance);
+    if same_version(held, incoming) {
+        return if later {
+            Filing::Refreshed
+        } else {
+            Filing::Unchanged
+        };
     }
+    // Neither supersedes the other only when both times are known and equal.
+    let tie = !later && !held_provenance.supersedes(incoming_provenance);
+    let reread = || {
+        let read_at = |p: &Provenance| p.fetched_at.as_deref().and_then(Timestamp::parse);
+        meta_source(held) == meta_source(incoming)
+            && matches!(
+                (read_at(held_provenance), read_at(incoming_provenance)),
+                (Some(h), Some(i)) if i > h
+            )
+    };
+    if later || (tie && reread()) {
+        Filing::Replaces
+    } else {
+        Filing::Older
+    }
+}
+
+/// A resource's `meta.source`, the route a producer marks a mapped resource
+/// with (`uhc:portal`, `uhc:eob-pdf`).
+fn meta_source(resource: &RawResource) -> Option<String> {
+    #[derive(Deserialize)]
+    struct Peek {
+        meta: Option<PeekMeta>,
+    }
+    #[derive(Deserialize)]
+    struct PeekMeta {
+        source: Option<String>,
+    }
+    serde_json::from_str::<Peek>(&resource.raw)
+        .ok()?
+        .meta?
+        .source
 }
 
 /// Whether `a` and `b` are the same version: their [`content`] is the same.

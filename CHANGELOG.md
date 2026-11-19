@@ -1,7 +1,38 @@
 # Changelog
 
-## Unreleased
+## v0.6.6 — 2026-11-19
 
+Pins cli-common v0.33.2, as v0.6.5 does.
+
+- `pk-med-records`: `version::decide` now breaks a tie. A version with
+  other content at the same time as the held one returns `Replaces` when
+  both came by the same route (the same `meta.source`, or neither has one)
+  and it was read later (`fetched_at`). Before, it was `Older`, and the
+  store kept the held copy for good in three cases:
+  - a document a site reissues under the date it lists (labcorp-cli: a
+    report whose results come in under one `reportDate`);
+  - a built resource whose latest record changed without changing its
+    date;
+  - a newer release's mapping of the same statement.
+
+  A tie is still `Older` when the incoming version was read earlier or at
+  the same time, when either read time is unknown, or when the two came by
+  different routes. So re-importing an older stream changes nothing, and a
+  statement listed on the site and the same statement downloaded do not
+  displace each other on every import. `Provenance::supersedes` is
+  unchanged. There are two limits, both in §1.4:
+  - a `--files` re-read of an older file under the same date replaces the
+    held copy, since its read time is the folder's;
+  - a same-date correction by another route than the held copy's stays
+    `Older`.
+- DESIGN.md §1.4: a resource built from several of the source's records (a
+  prescription from its fills, a coverage from its statements) takes the
+  latest record's date, a day at `00:00:00Z`. That holds whether the
+  records were read from a site or parsed from documents, and the rule
+  comes before the site and document rules. Its content comes only from
+  that record and from what the records share, never from the range a
+  pull covered. A narrower pull then cannot displace a fuller copy, and a
+  latest record that changed under its date replaces the held one.
 - DESIGN.md §2.1 and `MedicationDispense`'s docs: a prescription the source
   numbers is a MedicationRequest of its own in the stream, which each of its
   fills names as `MedicationRequest/<id>` (read with `Reference::target`), as

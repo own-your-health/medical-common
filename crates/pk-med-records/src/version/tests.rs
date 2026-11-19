@@ -49,6 +49,7 @@ fn site(at: &str) -> Provenance {
 
 const MARCH_10: &str = "2026-03-10T14:00:00Z";
 const MARCH_15: &str = "2026-03-15T08:00:00Z";
+const MARCH_15_READ: &str = "2026-03-15T09:30:00Z";
 
 #[test]
 fn a_stamp_alone_does_not_make_another_version() {
@@ -114,7 +115,7 @@ fn a_site_read_again_unchanged_refreshes_the_held_copy() {
 }
 
 #[test]
-fn other_content_replaces_only_when_more_current() {
+fn other_content_replaces_unless_less_current() {
     let held = claim(MARCH_10, "12.50");
     let later = claim(MARCH_15, "13.50");
     assert_eq!(
@@ -124,6 +125,16 @@ fn other_content_replaces_only_when_more_current() {
     assert_eq!(
         decide(&later, &site(MARCH_15), &held, &site(MARCH_10)),
         Filing::Older
+    );
+    // The same content at the same time is still nothing to file.
+    assert_eq!(
+        decide(
+            &held,
+            &site(MARCH_10),
+            &claim(MARCH_10, "12.50"),
+            &listed(MARCH_10, MARCH_15_READ)
+        ),
+        Filing::Unchanged
     );
     // A statement with no printed date never displaces a dated read.
     let undated =
@@ -170,5 +181,54 @@ fn a_refresh_keeps_what_the_store_decided() {
     assert!(
         !site(MARCH_15).supersedes(&refreshed),
         "the refresh is now current"
+    );
+}
+
+/// A copy listed with `listed` and read at `read`, by the site.
+fn listed(listed: &str, read: &str) -> Provenance {
+    filed(method::PORTAL, Some(listed), read)
+}
+
+#[test]
+fn a_later_read_by_the_same_route_breaks_a_tie() {
+    // A report the site reissues under the date it lists, in another offset.
+    let preliminary = claim(MARCH_10, "12.50");
+    let final_ = claim("2026-03-10T09:00:00-05:00", "13.50");
+    let first = listed(MARCH_10, MARCH_10);
+    let then = listed("2026-03-10T09:00:00-05:00", MARCH_15_READ);
+    assert_eq!(
+        decide(&preliminary, &first, &final_, &then),
+        Filing::Replaces
+    );
+    // Re-importing the earlier stream afterwards changes nothing.
+    assert_eq!(decide(&final_, &then, &preliminary, &first), Filing::Older);
+    // A read at the same moment, or one with no read time, cannot order them.
+    assert_eq!(
+        decide(&preliminary, &first, &final_, &listed(MARCH_10, MARCH_10)),
+        Filing::Older
+    );
+    let mut unread = listed(MARCH_10, MARCH_15_READ);
+    unread.fetched_at = None;
+    assert_eq!(
+        decide(&preliminary, &first, &final_, &unread),
+        Filing::Older
+    );
+}
+
+#[test]
+fn two_routes_at_the_same_time_keep_the_held_copy() {
+    // One statement, listed on the site and downloaded, dated the same day.
+    let site_copy = claim(MARCH_10, "12.50");
+    let statement_copy = eob(&site_copy.raw.replace("uhc:portal", "uhc:eob-pdf"));
+    let site_read = listed(MARCH_10, MARCH_10);
+    let folder_read = listed(MARCH_10, MARCH_15_READ);
+    assert!(!same_version(&site_copy, &statement_copy));
+    assert_eq!(
+        decide(&site_copy, &site_read, &statement_copy, &folder_read),
+        Filing::Older
+    );
+    assert_eq!(
+        decide(&statement_copy, &folder_read, &site_copy, &site_read),
+        Filing::Older
     );
 }
