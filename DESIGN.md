@@ -23,9 +23,9 @@ with the `records-files` capability (§1.1); v0.6.3 dates every resource
 with `meta.lastUpdated` and compares versions by it
 (`Provenance::supersedes`, §1.4); v0.6.4 sets apart a re-read that changed
 only its stamp (`version::decide`, §1.4); v0.6.5 types a pharmacy fill
-(`MedicationDispense`, §2.1); v0.6.6 lets other content at the same time
-replace the held version (`version::decide`, §1.4). §3.6 says why no
-portal sign-in is scripted.
+(`MedicationDispense`, §2.1); v0.6.6 breaks a same-time tie between
+versions with other content by the later read over the same route
+(`version::decide`, §1.4). §3.6 says why no portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -326,9 +326,18 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   reissued under the date it lists, a built resource whose latest record
   changed without changing its date, and a newer release's mapping of the
   same statement. Otherwise the held version stays. So re-importing an
-  older stream changes nothing, and two routes to one resource at the same
-  date (a statement listed on the site and the same statement downloaded)
-  do not displace each other on every import.
+  older stream, which keeps its `pulled_at`, changes nothing, and two
+  routes to one resource at the same date (a statement listed on the site
+  and the same statement downloaded) do not displace each other on every
+  import. The rule has two limits:
+  - Re-reading an older file with `--files` under the same date replaces
+    the held copy, because the stream's read time is when the folder was
+    read.
+  - A correction under its original date that comes by a route other than
+    the held copy's stays `Older`.
+
+  A producer that can date a correction by a date of its own (a reissue
+  or adjudication date the source prints) avoids both.
 
 **Trailer** (`Trailer`):
 

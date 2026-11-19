@@ -20,7 +20,11 @@ Pins cli-common v0.33.2, as v0.6.5 does.
   different routes. So re-importing an older stream changes nothing, and a
   statement listed on the site and the same statement downloaded do not
   displace each other on every import. `Provenance::supersedes` is
-  unchanged.
+  unchanged. There are two limits, both in §1.4:
+  - a `--files` re-read of an older file under the same date replaces the
+    held copy, since its read time is the folder's;
+  - a same-date correction by another route than the held copy's stays
+    `Older`.
 - DESIGN.md §1.4: a resource built from several of the source's records (a
   prescription from its fills, a coverage from its statements) takes the
   latest record's date, a day at `00:00:00Z`. That holds whether the
