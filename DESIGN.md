@@ -252,12 +252,13 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
     line is the server's text. One the server sent without it stays
     without.
   - A resource mapped from a member or patient site has `meta.lastUpdated`
-    set to the time the page was read, or the header's `pulled_at`. A
-    resource the site shows with a fixed date of its own carries that date
-    instead, as a document does: a document listed with the date it was
-    issued or created, and its `Binary`. The read time changes the line on
-    every read; the store's rule for the same version (below) keeps that
-    from filing a copy per read.
+    set to the time the page was read, or the header's `pulled_at`. That
+    includes a document the site lists and its `Binary`, whatever date the
+    site lists them with. A site may reissue a document under the date it
+    lists (a lab report while its results come in), and the reissue must
+    rank after the copy read before it. The read time changes the line on
+    every read; the store's rule for the same version (below) refreshes an
+    unchanged copy in place rather than filing one per read.
   - A resource parsed from a document (a statement, a downloaded record)
     has it set to the date printed on the document as its issue date. That
     calendar date is taken as printed, with no time-zone conversion, and
