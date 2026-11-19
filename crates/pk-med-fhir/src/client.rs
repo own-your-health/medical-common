@@ -569,7 +569,7 @@ impl<T: Transport> FhirClient<T> {
 
     fn resolve(&self, reference: &str) -> Result<String, CliError> {
         let reference = reference.trim();
-        if reference.contains("://") {
+        if is_absolute(reference) {
             if origin_of(reference).as_deref() != Some(self.origin.as_str()) {
                 return Err(CliError::Upstream(format!(
                     "a reference points at another server than {}; not following it",
@@ -801,6 +801,19 @@ fn check_type(resource_type: &str) -> Result<(), CliError> {
 
 /// Whether a path's segments, before its query, include `.` or `..`, spelled
 /// out or percent-encoded (`%2e%2e`): a URL parser resolves both.
+/// Whether `reference` is an absolute URL: it starts with a scheme and
+/// `://` (RFC 3986: a letter, then letters, digits, `+`, `-` or `.`). A
+/// relative search may carry `://` in its query, as a token's system does
+/// (`Condition?code=http://snomed.info/sct|…`), and stays relative.
+fn is_absolute(reference: &str) -> bool {
+    let Some((scheme, _)) = reference.split_once("://") else {
+        return false;
+    };
+    let mut chars = scheme.chars();
+    chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+        && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+}
+
 pub(crate) fn has_dot_segment(path: &str) -> bool {
     path.split(['?', '#'])
         .next()
@@ -1113,6 +1126,42 @@ mod tests {
     fn debug_shows_no_token() {
         let c = client(vec![]);
         assert!(!format!("{c:?}").contains("synthetic-token"));
+    }
+
+    /// A token search's system is a URL inside the query: the search is
+    /// still relative to the base, and goes to it.
+    #[test]
+    fn a_relative_search_with_a_url_in_its_query_goes_to_the_base() {
+        let c = client(vec![json(
+            r#"{"resourceType":"Bundle","type":"searchset"}"#,
+        )]);
+        let path = "Condition?patient=p1&code=http://snomed.info/sct|123";
+        block_on(c.get_raw(path)).unwrap();
+        assert_eq!(c.transport().seen.borrow()[0].url, format!("{BASE}/{path}"));
+        for (reference, absolute) in [
+            ("https://fhir.example.test/r4/Patient/p1", true),
+            ("HTTP://fhir.example.test/r4", true),
+            ("web+fhir://x/y", true),
+            ("Condition?code=http://snomed.info/sct|123", false),
+            ("Observation?code=http://loinc.org|1-8", false),
+            ("Patient/p1", false),
+            ("1http://x/y", false),
+            ("://x/y", false),
+            ("ht tp://x/y", false),
+        ] {
+            assert_eq!(is_absolute(reference), absolute, "{reference}");
+        }
+    }
+
+    #[test]
+    fn an_absolute_url_elsewhere_or_a_network_path_is_refused() {
+        let c = client(vec![]);
+        let elsewhere =
+            block_on(c.get_raw("https://other.example.test/r4/Patient/p1")).unwrap_err();
+        assert_eq!(elsewhere.exit_code(), 5);
+        let network_path = block_on(c.get_raw("//other.example.test/r4/Patient/p1")).unwrap_err();
+        assert_eq!(network_path.exit_code(), 2);
+        assert!(c.transport().seen.borrow().is_empty(), "nothing was sent");
     }
 
     #[test]
