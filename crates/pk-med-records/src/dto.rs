@@ -31,6 +31,11 @@ pub const LOGIN_PROFILES: &str = "login-profiles";
 /// store passes `--files` only to a provider that lists it.
 pub const RECORDS_FILES: &str = "records-files";
 
+/// The `cli-info/v1` capability of a CLI whose `patients label` sets the
+/// household's own name for one member of a profile (DESIGN.md §1), as a
+/// sign-in that sees several people needs.
+pub const PATIENT_LABELS: &str = "patient-labels";
+
 /// An organization a CLI can reach: a provider's FHIR server, or an
 /// insurer's. Also the stream header's `organization`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

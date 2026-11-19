@@ -26,7 +26,7 @@ pub mod version;
 
 pub use dto::{
     org_list, patient_list, Organization, PatientContext, Provenance, ProvenanceSource,
-    RecordsExport, SourceResource, LOGIN_PROFILES, PROFILE, RECORDS_FILES,
+    RecordsExport, SourceResource, LOGIN_PROFILES, PATIENT_LABELS, PROFILE, RECORDS_FILES,
 };
 pub use export::{create_export_file, ExportFile, EXPORT_FILE, INCOMPLETE_FILE};
 pub use pk_med_fhir::RawResource;

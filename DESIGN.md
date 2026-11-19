@@ -25,7 +25,9 @@ with `meta.lastUpdated` and compares versions by it
 only its stamp (`version::decide`, §1.4); v0.6.5 types a pharmacy fill
 (`MedicationDispense`, §2.1); v0.6.6 breaks a same-time tie between
 versions with other content by the later read over the same route
-(`version::decide`, §1.4). §3.6 says why no portal sign-in is scripted.
+(`version::decide`, §1.4); v0.6.7 names `patients label`, the household's
+own name for one member, and its `patient-labels` capability (§1). §3.6
+says why no portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -56,6 +58,7 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 <bin> auth status --profile <NAME>                          # auth-status/v1
 <bin> auth logout --profile <NAME>
 <bin> patients list --profile <NAME>                        # patient-list/v1
+<bin> patients label --profile <NAME> --patient <ID> (<WHO> | --clear)   # the household's own name for one member
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] --ndjson    # records-stream/v1 on stdout
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] -o <DIR>    # the same stream to <DIR>/records.ndjson (records.incomplete.ndjson if it ends incomplete); records-export/v1 on stdout, its path the file written
 <bin> patients list --files <DIR>                           # a source of downloaded files (below), no login
@@ -68,6 +71,30 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 - `orgs search` matches `name`, `aliases` and `location`, case-insensitive.
 - `--patient` takes a `PatientContext.id`, or its `label`. With one
   context signed in, it may be omitted.
+- `patients label` sets the household's own name for one member of a
+  profile, in that member's grant (below), replacing any label it had.
+  `--clear` removes it. It is how a member gets a label when one sign-in
+  sees several people, as an insurer's family account does, since `auth
+  login --label` names only the patient of the sign-in. A name the source
+  shows for a person is `PatientContext.name`, never a label (§1.3).
+  - `--patient` takes the member's `id` or its current label. One that
+    matches no member of the profile is exit 4.
+  - A label is unique within the profile and never equal to a member's
+    `id`, so `--patient` is never ambiguous; either collision is exit 2.
+    So is a `<WHO>` that is empty or only whitespace, and `<WHO>` given
+    with `--clear`, or neither given.
+  - Setting the label a member already has, or clearing one that is not
+    set, succeeds and changes nothing.
+  - On success, `--json` prints `patient-list/v1` holding that one member.
+    Human output is a line on the person's own terminal. Errors follow
+    §1.3: they echo no `name` and no derived `id`, so the no-match error
+    does not repeat the `--patient` value.
+  - It takes `--profile`, never `--files`, because a label belongs to a
+    profile's grant (§1.1). It makes no request and reads no secret.
+  - `info --json` lists `"patient-labels"`
+    (`pk_med_records::PATIENT_LABELS`) in `cli-info/v1`'s `capabilities`
+    once the command exists, so a store or an agent knows it can label a
+    member.
 - `--since` bounds each search by the date parameter the source documents
   for the type, and leaves a type the source documents none for unbounded
   rather than guess one (`_lastUpdated` can turn a whole search into a 400).
@@ -142,7 +169,7 @@ its DESIGN.md §2.5).
   profile (`pk_cli_browser::forget_named_profile`) and its config, and
   asks first (piekstra-cli/1 §1.3: `--force`, exit 6 when it cannot ask).
 - A profile holds zero or more grants, each an organization and a patient
-  label (`--label`) with the patient's id. A CLI keeps one record per
+  label (`--label`, or `patients label`) with the patient's id. A CLI keeps one record per
   grant, in one place: the profile's settings (`Profiles::settings`), or an
   owner-only index of its own beside the config, keyed by profile,
   organization and patient (athena's `sessions.json`). In the second case
@@ -194,12 +221,12 @@ sign-in for. `patients list` emits `Paged<PatientContext>` (`patient-list/v1`,
 |---|---|---|
 | `id` | required | the FHIR `Patient.id` at the source; for a mapped source, the id the CLI derives (below) |
 | `organization` | optional | the `Organization.id` it is at |
-| `label` | optional | the household's own name for it (`--label`), never read from the record |
+| `label` | optional | the household's own name for it (`--label` at sign-in, or `patients label`), never read from the record |
 | `relationship` | optional | `self`, or `proxy` for a parent's access to a child's record |
 | `kind` | optional | `patient` at a provider, `member` at an insurer |
 | `member_role` | optional | `subscriber` or `dependent` |
 | `fhir_user` | optional | the signed-in user's `fhirUser` (`Patient/…`, `RelatedPerson/…`) |
-| `name` | optional | the name the source shows, for the person's own terminal; never in a fixture, a log or an error message |
+| `name` | optional | the name the source shows, for the person's own terminal; never in a fixture, a log or an error message, and never copied into `label` |
 | `session` | optional | the sign-in's account, `smart/<org>/<patient>` (`pk_med_smart::account`, §3.2), never the token. An opaque handle: the CLI finds the session by it within the profile the command ran as, in the vault entry `<profile>/<org>/<patient>`, or for a CLI before profiles in the keychain item of that name |
 
 A CLI that maps a non-FHIR source derives `id` itself. The id names the
@@ -1272,10 +1299,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.7" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.7" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.7" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.7" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1306,3 +1333,4 @@ does not convert to the other.
 | v0.6.4 | v0.33.2 |
 | v0.6.5 | v0.33.2 |
 | v0.6.6 | v0.33.2 |
+| v0.6.7 | v0.33.2 |
