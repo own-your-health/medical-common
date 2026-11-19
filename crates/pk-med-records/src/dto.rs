@@ -295,6 +295,27 @@ impl Provenance {
             (_, None) => true,
         }
     }
+
+    /// The provenance of a held version refreshed by `incoming`, the same
+    /// version read again ([`Filing::Refreshed`](crate::version::Filing)):
+    /// where and when it was read, from `incoming` (`source`, `method`,
+    /// `source_resource`, `fetched_at`), and what the store decided, from
+    /// `self` (`filed_at` and `filed_by`, when and by what the version was
+    /// first filed; `raw_path`, where the store rewrites its copy;
+    /// `classified_by`, a hand classification included; `derived_from`).
+    pub fn refreshed_by(&self, incoming: &Provenance) -> Provenance {
+        Provenance {
+            source: incoming.source.clone(),
+            method: incoming.method.clone(),
+            source_resource: incoming.source_resource.clone(),
+            fetched_at: incoming.fetched_at.clone(),
+            filed_at: self.filed_at.clone(),
+            raw_path: self.raw_path.clone(),
+            classified_by: self.classified_by.clone(),
+            derived_from: self.derived_from.clone(),
+            filed_by: self.filed_by.clone(),
+        }
+    }
 }
 
 /// What `records export -o <DIR>` wrote (`records-export/v1`), on stdout.

@@ -289,12 +289,16 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   `meta.lastUpdated`, a `meta` left empty by that counted as absent. The
   order of its members and of `meta`'s does not count; every value is
   compared as written, so a decimal's spelling does. `version::decide` gives
-  the store's filing:
+  the store's filing. A refresh takes where and when the version was read
+  from the incoming provenance (`source`, `method`, `source_resource`,
+  `fetched_at`) and keeps what the store decided (`filed_at`, `filed_by`,
+  `raw_path`, `classified_by`, `derived_from`), so a hand classification
+  survives every re-read:
 
   | Content | Incoming supersedes held | Filing | The store |
   |---|---|---|---|
   | same | no | `Unchanged` | files nothing |
-  | same | yes | `Refreshed` | replaces the held copy and its provenance in place, adding no version |
+  | same | yes | `Refreshed` | rewrites the held copy in place and refreshes its provenance (`Provenance::refreshed_by`), adding no version |
   | differs | yes | `Replaces` | makes the incoming version current; it may keep the held one as an earlier version |
   | differs | no | `Older` | keeps the held version current; it may keep the incoming one as an earlier version |
 

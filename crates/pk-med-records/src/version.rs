@@ -21,8 +21,9 @@ pub enum Filing {
     /// The same content, not more current: file nothing.
     Unchanged,
     /// The same content, more current (a site read again, a FHIR resource
-    /// pulled again): replace the held copy and its provenance in place,
-    /// adding no version.
+    /// pulled again): rewrite the held copy in place with the incoming text,
+    /// and its provenance with [`Provenance::refreshed_by`], which keeps
+    /// what the store decided. No version is added.
     Refreshed,
     /// Other content, more current: the incoming version becomes current. The
     /// store may keep the held one as an earlier version.

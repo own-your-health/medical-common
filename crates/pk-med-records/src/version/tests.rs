@@ -143,3 +143,32 @@ fn an_undated_fhir_resource_pulled_again_refreshes_by_its_pull_time() {
     assert_eq!(decide(&line, &january, &line, &march), Filing::Refreshed);
     assert_eq!(decide(&line, &march, &line, &january), Filing::Unchanged);
 }
+
+#[test]
+fn a_refresh_keeps_what_the_store_decided() {
+    let mut held = site(MARCH_10);
+    held.raw_path = Some("Member/Records/uhc/ExplanationOfBenefit/eob-0001.json".into());
+    held.classified_by = Some(crate::dto::classified_by::HAND.into());
+    held.derived_from = Some(crate::dto::DerivedFrom {
+        document_id: "doc-0001".into(),
+        rule_id: "rule-0001".into(),
+    });
+    let mut incoming = site(MARCH_15);
+    incoming.source.cli_version = Some("0.2.2".into());
+    incoming.filed_at = "2026-03-21T00:00:00Z".into();
+    incoming.filed_by = "medrec 0.0.1".into();
+    let refreshed = held.refreshed_by(&incoming);
+    assert_eq!(refreshed.source, incoming.source);
+    assert_eq!(refreshed.method, incoming.method);
+    assert_eq!(refreshed.source_resource, incoming.source_resource);
+    assert_eq!(refreshed.fetched_at.as_deref(), Some(MARCH_15));
+    assert_eq!(refreshed.filed_at, held.filed_at);
+    assert_eq!(refreshed.filed_by, held.filed_by);
+    assert_eq!(refreshed.raw_path, held.raw_path);
+    assert_eq!(refreshed.classified_by, held.classified_by);
+    assert_eq!(refreshed.derived_from, held.derived_from);
+    assert!(
+        !site(MARCH_15).supersedes(&refreshed),
+        "the refresh is now current"
+    );
+}
