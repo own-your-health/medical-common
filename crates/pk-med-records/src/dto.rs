@@ -253,23 +253,45 @@ impl Provenance {
     }
 
     /// When this version's content was current (DESIGN.md §1.4): the
-    /// resource's `meta.lastUpdated` (`source_resource.last_updated`), else
-    /// when the stream it came in was pulled (`fetched_at`). A time that does
-    /// not parse counts as absent. `None` when neither is known.
+    /// resource's `meta.lastUpdated` (`source_resource.last_updated`); for a
+    /// resource from a FHIR API (`method` `fhir-api`) the server sent without
+    /// one, when its stream was pulled (`fetched_at`). A mapped resource has
+    /// no such fallback: its stream's pull time says when files were read,
+    /// not when a statement was current. A time that does not read as an
+    /// RFC 3339 instant ([`Timestamp::parse`]) counts as absent. `None` when
+    /// no time is known.
     pub fn current_at(&self) -> Option<Timestamp> {
-        self.source_resource
+        let own = self
+            .source_resource
             .as_ref()
             .and_then(|r| r.last_updated.as_deref())
-            .and_then(Timestamp::parse)
-            .or_else(|| self.fetched_at.as_deref().and_then(Timestamp::parse))
+            .and_then(Timestamp::parse);
+        own.or_else(|| {
+            (self.method == method::FHIR_API)
+                .then(|| self.fetched_at.as_deref().and_then(Timestamp::parse))
+                .flatten()
+        })
     }
 
-    /// Whether this version's content is more current than `held`'s: both
-    /// times known and this one strictly later. On a tie, or with either
-    /// unknown, it is not, so a store that replaces only on `true` keeps the
-    /// version it holds and a re-import changes nothing (§1.4).
-    pub fn is_more_current_than(&self, held: &Provenance) -> bool {
-        matches!((self.current_at(), held.current_at()), (Some(new), Some(old)) if new > old)
+    /// Whether a store holding `held` replaces it with this version of the
+    /// same resource (DESIGN.md §1.4), by [`current_at`](Self::current_at):
+    ///
+    /// | `held` | this | |
+    /// |---|---|---|
+    /// | known | known, later | replace |
+    /// | known | known, the same or earlier | keep `held` |
+    /// | known | unknown | keep `held` |
+    /// | unknown | known or unknown | replace |
+    ///
+    /// A tie keeps `held`, so a re-import changes nothing. A version with no
+    /// known time replaces only one with none either, as the last import
+    /// did before versions were dated.
+    pub fn supersedes(&self, held: &Provenance) -> bool {
+        match (self.current_at(), held.current_at()) {
+            (Some(new), Some(old)) => new > old,
+            (None, Some(_)) => false,
+            (_, None) => true,
+        }
     }
 }
 
@@ -360,37 +382,58 @@ mod tests {
         }
     }
 
+    /// A FHIR API version with the given `meta.lastUpdated` and pull time.
+    fn fhir_version(last_updated: Option<&str>, fetched_at: &str) -> Provenance {
+        let mut p = version(last_updated, Some(fetched_at));
+        p.method = method::FHIR_API.into();
+        p.source.kind = source_kind::FHIR.into();
+        p
+    }
+
     #[test]
-    fn a_version_is_current_at_its_last_update_else_when_it_was_pulled() {
+    fn a_version_is_current_at_its_last_update_or_a_fhir_pull() {
         let at = |t: &str| Timestamp::parse(t).unwrap();
-        let dated = version(Some("2026-03-01T00:00:00Z"), Some("2026-03-04T10:00:00Z"));
+        let pulled = "2026-03-04T10:00:00Z";
+        let dated = version(Some("2026-03-01T00:00:00Z"), Some(pulled));
         assert_eq!(dated.current_at(), Some(at("2026-03-01T00:00:00Z")));
-        let undated = version(None, Some("2026-03-04T10:00:00Z"));
-        assert_eq!(undated.current_at(), Some(at("2026-03-04T10:00:00Z")));
-        let unreadable = version(Some("March 1"), Some("2026-03-04T10:00:00Z"));
-        assert_eq!(unreadable.current_at(), Some(at("2026-03-04T10:00:00Z")));
+        // A FHIR resource the server sent undated was current when pulled.
+        assert_eq!(fhir_version(None, pulled).current_at(), Some(at(pulled)));
+        assert_eq!(
+            fhir_version(Some("not a time"), pulled).current_at(),
+            Some(at(pulled))
+        );
+        // A mapped one has no fallback: a --files pull time is when the
+        // folder was read, not when the statement was current.
+        assert_eq!(version(None, Some(pulled)).current_at(), None);
+        assert_eq!(version(Some("2026-03-01"), Some(pulled)).current_at(), None);
         assert_eq!(version(None, None).current_at(), None);
     }
 
     #[test]
-    fn only_a_strictly_later_version_is_more_current() {
+    fn a_version_supersedes_the_held_one_only_when_it_is_more_current() {
         // A site read on 2026-03-10, held; a statement issued 2026-03-01.
         let site = version(Some("2026-03-10T14:00:00Z"), Some("2026-03-10T14:00:00Z"));
         let statement = version(Some("2026-03-01T00:00:00Z"), Some("2026-03-12T09:00:00Z"));
-        assert!(!statement.is_more_current_than(&site));
-        assert!(site.is_more_current_than(&statement));
-        // A site version filed before this rule has no lastUpdated: its pull
-        // time stands in, so an older statement still does not replace it.
-        let old_site = version(None, Some("2026-03-10T14:00:00Z"));
-        assert!(!statement.is_more_current_than(&old_site));
-        // The same instant in two offsets is a tie, and a tie keeps the held.
+        assert!(!statement.supersedes(&site));
+        assert!(site.supersedes(&statement));
+        // An undated statement, from a producer before the rule or with no
+        // printed date, does not replace a dated site version, though it was
+        // imported later.
+        let undated = version(None, Some("2026-03-12T09:00:00Z"));
+        assert!(!undated.supersedes(&site));
+        // A dated version replaces an undated one filed before the rule, and
+        // with neither dated the last import wins, as before.
+        assert!(site.supersedes(&undated));
+        assert!(undated.supersedes(&version(None, Some("2026-03-01T00:00:00Z"))));
+        // The same instant in two offsets is a tie; a tie keeps the held.
         let same = version(Some("2026-03-10T09:00:00-05:00"), None);
-        assert!(!same.is_more_current_than(&site));
-        assert!(!site.is_more_current_than(&same));
-        // An unknown time on either side keeps the held version.
-        let unknown = version(None, None);
-        assert!(!unknown.is_more_current_than(&site));
-        assert!(!site.is_more_current_than(&unknown));
+        assert!(!same.supersedes(&site));
+        assert!(!site.supersedes(&same));
+        // Undated FHIR versions compare by when they were pulled.
+        let january = fhir_version(None, "2026-01-05T00:00:00Z");
+        let march = fhir_version(None, "2026-03-05T00:00:00Z");
+        assert!(march.supersedes(&january));
+        assert!(!january.supersedes(&march));
     }
 
     #[test]

@@ -10,17 +10,22 @@ Pins cli-common v0.33.2, as v0.6.2 does.
   a site gets the time the page was read. One parsed from a document gets
   the printed issue date, as that day at `00:00:00Z` with no time-zone
   conversion, or the month's first day if it is dated only to the month.
-  A store keeps the later of two versions of one resource, taking each
-  one's time as its `meta.lastUpdated`, else its stream's `pulled_at`. A
-  tie or an unknown time keeps the version it holds, so a re-import is a
-  no-op. §1.6: `source_resource.last_updated` is the line's
-  `meta.lastUpdated` as written.
+  A version's time is its `meta.lastUpdated`. A FHIR API resource the
+  server sent undated takes its stream's `pulled_at`. A mapped one takes no
+  fallback, because a `--files` pull time is when the folder was read. A
+  value that is not an RFC 3339 instant counts as absent. A store keeps the
+  later of two versions. A tie, or an incoming version with no known time,
+  keeps the held one, and a held version with no known time is replaced, as
+  the last import was before. §1.6: `source_resource.last_updated` is the
+  line's `meta.lastUpdated` as written.
 - `pk-med-records`: `Provenance::current_at`, that time, and
-  `Provenance::is_more_current_than`, the comparison. Both read RFC 3339
-  through the new `Timestamp`, which compares instants written in
-  different offsets or fractional digits correctly. As strings,
-  `2026-02-28T19:00:00-05:00` sorts before `2026-03-01T00:00:00Z`, though
-  they are the same instant.
+  `Provenance::supersedes`, the decision. Both read RFC 3339 through the new
+  `Timestamp`, which compares instants written in different offsets or
+  fractional digits correctly. As strings, `2026-02-28T19:00:00-05:00`
+  sorts before `2026-03-01T00:00:00Z`, though they are the same instant.
+- Already filed versions: a `fhir-api` one without `last_updated` now
+  compares by its `fetched_at`. A mapped one without it has no known time,
+  so the first dated version of it replaces it.
 - DESIGN.md §3.1 and `SignInWindow`'s docs: Kaiser Permanente's Epic
   organizations need no page before the authorize address. v0.6.1's docs
   said a kp.org session was missing. mychart found on 2026-11-19 that the

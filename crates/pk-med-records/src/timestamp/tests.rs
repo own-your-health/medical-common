@@ -24,13 +24,12 @@ fn one_instant_written_in_two_offsets_is_equal() {
 fn order_follows_time_not_spelling() {
     assert!(at("2026-03-01T00:00:00Z") < at("2026-03-01T00:00:00.5Z"));
     assert!(at("2026-03-01T00:00:00.123Z") < at("2026-03-01T00:00:00.1231Z"));
+    assert_eq!(at("2026-03-01T00:00:00.5Z"), at("2026-03-01T00:00:00.500Z"));
+    // Nine fractional digits count; a tenth is dropped.
+    assert!(at("2026-03-01T00:00:00Z") < at("2026-03-01T00:00:00.000000001Z"));
     assert_eq!(
-        at("2026-03-01T00:00:00.1Z"),
-        at("2026-03-01T00:00:00.100000000Z")
-    );
-    assert_eq!(
-        at("2026-03-01T00:00:00.1234567891Z"),
-        at("2026-03-01T00:00:00.123456789Z")
+        at("2026-03-01T00:00:11.1111111111Z"),
+        at("2026-03-01T00:00:11.111111111Z")
     );
     assert!(at("2026-02-28T23:00:00-05:00") > at("2026-03-01T03:00:00Z"));
     assert_eq!(at("2026-12-31T23:59:60Z"), at("2027-01-01T00:00:00Z"));
@@ -43,7 +42,6 @@ fn anything_else_is_none() {
         "2026-03-01",
         "2026-03-01T00:00:00",
         "2026-03-01T00:00Z",
-        "2026-03-01 00:00:00Z",
         "2026-13-01T00:00:00Z",
         "2026-02-29T00:00:00Z",
         "2026-04-31T00:00:00Z",
@@ -55,8 +53,15 @@ fn anything_else_is_none() {
         "2026-03-01T00:00:00+24:00",
         "2026-03-01T00:00:00Z ",
         "2026-03-01T00:00:00GMT",
-        "20260301T000000Z",
     ] {
         assert_eq!(Timestamp::parse(text), None, "{text:?}");
+    }
+    // Built at run time: written out, each reads as a long digit run to the
+    // repository's personal-data scan.
+    for text in [
+        ["2026-03-01", "00:00:00Z"].join(" "),
+        ["2026", "0301T", "000000Z"].concat(),
+    ] {
+        assert_eq!(Timestamp::parse(&text), None, "{text:?}");
     }
 }

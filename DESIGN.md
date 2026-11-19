@@ -21,7 +21,7 @@ each profile's grants, owner-only and atomically (§1.1); v0.6.2 moves to
 cli-common v0.33.2 and names the downloaded-files source, `--files <DIR>`
 with the `records-files` capability (§1.1); v0.6.3 dates every resource
 with `meta.lastUpdated` and compares versions by it
-(`Provenance::current_at`, §1.4). §3.6 says why no portal sign-in is
+(`Provenance::supersedes`, §1.4). §3.6 says why no portal sign-in is
 scripted.
 
 This document is the specification of the profile, in the style of
@@ -260,13 +260,22 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
     docs name the printed date it takes for each kind of document.
   - Otherwise it is left out.
 
-  A store comparing two versions of one resource takes each one's time as
-  its `meta.lastUpdated`, else the `pulled_at` of the stream it came in
-  (`Provenance::current_at`, which reads them as instants, so two offsets
-  compare correctly). It keeps the later version. On a tie, or with either
-  time unknown, it keeps the version it holds, so a re-import changes
-  nothing (`Provenance::is_more_current_than`). A version filed before
-  this rule has its `fetched_at`, so it compares too.
+  A version's time is its `meta.lastUpdated`, read as an RFC 3339 instant
+  (`pk_med_records::Timestamp`, so two offsets or precisions compare
+  correctly). A resource from a FHIR API (`method` `fhir-api`) that the
+  server sent without one takes its stream's `pulled_at`, the time it was
+  last seen current. A mapped resource takes no such fallback: for a
+  `--files` import the pull time is when the folder was read, not when a
+  statement was current. A value that does not read as an instant counts
+  as absent. A store holding one version of a resource, given another,
+  decides by `Provenance::supersedes`:
+
+  | Held | Incoming | Kept |
+  |---|---|---|
+  | time known | time known and later | incoming |
+  | time known | time known, the same or earlier | held, so a re-import changes nothing |
+  | time known | time unknown | held |
+  | time unknown | either | incoming: the last import wins, as before versions were dated |
 
 **Trailer** (`Trailer`):
 
@@ -407,8 +416,9 @@ fills it from a stream's header and one resource; the store adds the rest.
 
 From a stream, `method` is the header's (`fhir-api` when absent) and
 `source.kind` is `fhir` for `fhir-api`, otherwise the method itself.
-When a version's content was current is `last_updated`, else `fetched_at`
-(`Provenance::current_at`, §1.4).
+When a version's content was current is `last_updated`, or for a
+`fhir-api` version without one, `fetched_at` (`Provenance::current_at`,
+§1.4).
 
 ### 1.7 How it composes with `documents/v1`
 
