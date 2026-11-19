@@ -91,7 +91,8 @@ pub struct Header {
     pub fhir_version: String,
     /// How the resources were obtained, a `dto::method` value: absent for
     /// `fhir-api`; `portal` for resources a CLI mapped from a member or
-    /// patient site, or from files downloaded there.
+    /// patient site it read; `file` for resources it read from files the
+    /// owner downloaded (`--files`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub method: Option<String>,
 }
