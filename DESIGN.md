@@ -208,12 +208,18 @@ person at the source, not the sign-in:
   so a dependent seen from a parent's sign-in and from their own gets one
   id. An identifier that repeats across accounts, such as a person code
   within a family, is combined with the account's.
-- It is opaque: a one-way digest (SHA-256, hex) of the identifiers, each
-  written with its length before it so two different sets cannot run
-  together into one. `id` appears in listings, stream headers, `--patient`
-  arguments and the store's folders, so it never carries a member id or
-  any other source identifier as written. The same derivation serves
-  every source the CLI has (§1.1).
+- It is opaque: a one-way digest (SHA-256, hex, or a prefix of at least 12
+  hex digits) of the identifiers. Each identifier is written with its
+  length before it, or joined by a separator neither can contain, so two
+  different sets cannot run together into one. `id` appears in listings,
+  stream headers, `--patient` arguments and the store's folders, so it
+  never carries a member id or any other source identifier as written.
+  The same derivation serves every source the CLI has (§1.1).
+- A digest hides an identifier only from plain sight. One built from a
+  short identifier (a nine-digit member id) can be recovered by trying
+  every value. So a derived id is handled as the identifier it comes from:
+  never in a fixture, a doc, a commit, an issue or a log line, and tests
+  use synthetic ones (PRIVACY.md).
 - Where the source offers no identifier that the sign-ins share, the CLI
   derives the id per sign-in and says so in its docs. A store then files
   two patients for one person, which a hand merge can join, rather than
