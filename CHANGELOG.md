@@ -3,12 +3,19 @@
 ## Unreleased
 
 - DESIGN.md §1.3: a CLI that maps a non-FHIR source derives
-  `PatientContext.id` from an identifier every sign-in that sees the
-  person shares, combining one that repeats across accounts (a person
-  code) with the account's. Where the source offers none, it derives the
-  id per sign-in and says so in its docs. Two patients for one person can
-  be merged by hand; one patient for two people cannot be cleanly split
-  (from the caremark-cli session).
+  `PatientContext.id` (from the caremark-cli session).
+  - The id comes from an identifier every sign-in that sees the person
+    shares. One that repeats across accounts (a person code) is combined
+    with the account's.
+  - It is a SHA-256 digest of length-prefixed identifiers, never a source
+    identifier as written.
+  - Where the source offers no shared identifier, the CLI derives the id per
+    sign-in and says so in its docs. Two patients for one person can be
+    merged by hand; one patient for two people cannot be cleanly split.
+  - A change to the derivation is breaking: it splits every held patient,
+    so the CLI's CHANGELOG names it and documents both derivations.
+- DESIGN.md §1.4: uhc-cli's site `meta.source` is `uhc:member-site`, not
+  `uhc:portal`.
 
 ## v0.6.6 — 2026-11-19
 

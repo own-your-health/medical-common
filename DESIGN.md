@@ -192,7 +192,7 @@ sign-in for. `patients list` emits `Paged<PatientContext>` (`patient-list/v1`,
 
 | Field | | |
 |---|---|---|
-| `id` | required | the FHIR `Patient.id` at the source |
+| `id` | required | the FHIR `Patient.id` at the source; for a mapped source, the id the CLI derives (below) |
 | `organization` | optional | the `Organization.id` it is at |
 | `label` | optional | the household's own name for it (`--label`), never read from the record |
 | `relationship` | optional | `self`, or `proxy` for a parent's access to a child's record |
@@ -203,15 +203,26 @@ sign-in for. `patients list` emits `Paged<PatientContext>` (`patient-list/v1`,
 | `session` | optional | the sign-in's account, `smart/<org>/<patient>` (`pk_med_smart::account`, §3.2), never the token. An opaque handle: the CLI finds the session by it within the profile the command ran as, in the vault entry `<profile>/<org>/<patient>`, or for a CLI before profiles in the keychain item of that name |
 
 A CLI that maps a non-FHIR source derives `id` itself. The id names the
-person at the source, not the sign-in. The CLI derives it from an
-identifier every sign-in that sees the person shares, so a dependent seen
-from a parent's sign-in and from their own gets one id. An identifier that
-repeats across accounts, such as a person code within a family, is
-combined with the account's. Where the source offers no identifier that
-the sign-ins share, the CLI derives the id per sign-in and says so in its
-docs. A store then files two patients for one person, which a hand merge
-can join, rather than one patient for two people, which nothing can
-cleanly split.
+person at the source, not the sign-in:
+- It comes from an identifier every sign-in that sees the person shares,
+  so a dependent seen from a parent's sign-in and from their own gets one
+  id. An identifier that repeats across accounts, such as a person code
+  within a family, is combined with the account's.
+- It is opaque: a one-way digest (SHA-256, hex) of the identifiers, each
+  written with its length before it so two different sets cannot run
+  together into one. `id` appears in listings, stream headers, `--patient`
+  arguments and the store's folders, so it never carries a member id or
+  any other source identifier as written. The same derivation serves
+  every source the CLI has (§1.1).
+- Where the source offers no identifier that the sign-ins share, the CLI
+  derives the id per sign-in and says so in its docs. A store then files
+  two patients for one person, which a hand merge can join, rather than
+  one patient for two people, which nothing can cleanly split.
+
+A store keys patients on `id`, so the derivation is persisted identity. A
+change to it files every member a store holds as a second patient. The CLI
+names such a change in its CHANGELOG as breaking and documents the old and
+new derivations, so a store or the user can map one to the other.
 
 ### 1.4 The records stream (`records-stream/v1`)
 
@@ -255,7 +266,7 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
 - A producer that maps a non-FHIR source keeps each resource's id stable
   across runs and import routes (derived from the source's own claim or
   document number), so the store's same-resource merge works. It marks each
-  mapped resource with `meta.source` (`uhc:portal`, `uhc:eob-pdf`) and a
+  mapped resource with `meta.source` (`uhc:member-site`, `uhc:eob-pdf`) and a
   `meta.tag` saying it was mapped.
 - A resource carries `meta.lastUpdated`, a FHIR `instant`, whenever the
   producer knows when its content was current. It dates the content and

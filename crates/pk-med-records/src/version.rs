@@ -77,7 +77,7 @@ pub fn decide(
 }
 
 /// A resource's `meta.source`, the route a producer marks a mapped resource
-/// with (`uhc:portal`, `uhc:eob-pdf`).
+/// with (`uhc:member-site`, `uhc:eob-pdf`).
 fn meta_source(resource: &RawResource) -> Option<String> {
     #[derive(Deserialize)]
     struct Peek {
