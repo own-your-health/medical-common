@@ -21,9 +21,9 @@ each profile's grants, owner-only and atomically (§1.1); v0.6.2 moves to
 cli-common v0.33.2 and names the downloaded-files source, `--files <DIR>`
 with the `records-files` capability (§1.1); v0.6.3 dates every resource
 with `meta.lastUpdated` and compares versions by it
-(`Provenance::supersedes`, §1.4); v0.6.4 gives a `--files` stream the
-`file` method, so a site read without a date compares by when it was
-read (§1.4). §3.6 says why no portal sign-in is scripted.
+(`Provenance::supersedes`, §1.4); v0.6.4 sets apart a re-read that changed
+only its stamp (`version::decide`, §1.4). §3.6 says why no portal sign-in is
+scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -116,7 +116,7 @@ its DESIGN.md §2.5).
   - neither is exit 2, naming `--files` as well as the configured profiles.
 
   With `--files`, nothing reads the keychain or the vault, and no request is
-  made. The stream header's `method` is `file` (§1.4) and its
+  made. The stream header's `method` is `portal` (§1.4) and its
   `patient.session` is absent. A label belongs to a profile's grant, so
   `patients list --files` lists no `label`, and `--patient` takes the
   `PatientContext.id` only. With one member in the files, it may be
@@ -226,7 +226,7 @@ resource per line, and a trailer line. The writer is
 | `since_unbounded` | optional | with `since`: an array of FHIR `resourceType` names (`["Patient", "Medication"]`), the types the pull left unbounded because the source documents no date parameter for them; omitted when empty and when `since` is absent |
 | `pulled_at` | required | when the pull started, RFC 3339 UTC |
 | `fhir_version` | defaulted | `4.0.1`; a reader takes an absent one as `4.0.1` |
-| `method` | optional | how the resources were obtained: absent means `fhir-api`; `portal` for resources mapped from a member or patient site the CLI read; `file` for resources read from files the owner downloaded (`--files`, §1.1) |
+| `method` | optional | how the resources were obtained: absent means `fhir-api`; `portal` for resources mapped from a member or patient site or from files downloaded there |
 
 **Resource lines.** A line is a resource if and only if it has a top-level
 `resourceType`. Each is the server's own JSON text, minified (whitespace
@@ -250,13 +250,13 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   - A FHIR source's resource keeps the server's value as served, since the
     line is the server's text. One the server sent without it stays
     without.
-  - A resource mapped from a member or patient site (`portal`) leaves it
-    out. Its stream's `pulled_at` is when it was current, and a store takes
-    that time. Stamping the read time into each resource would change its
-    bytes on every read, and a store would file an unchanged resource
-    again. A resource whose content the site shows with a fixed date of
-    its own carries that date, as a document does: a document listed with
-    the date it was issued or created, and its `Binary`.
+  - A resource mapped from a member or patient site has `meta.lastUpdated`
+    set to the time the page was read, or the header's `pulled_at`. A
+    resource the site shows with a fixed date of its own carries that date
+    instead, as a document does: a document listed with the date it was
+    issued or created, and its `Binary`. The read time changes the line on
+    every read; the store's rule for the same version (below) keeps that
+    from filing a copy per read.
   - A resource parsed from a document (a statement, a downloaded record)
     has it set to the date printed on the document as its issue date. That
     calendar date is taken as printed, with no time-zone conversion, and
@@ -268,14 +268,13 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
 
   A version's time is its `meta.lastUpdated`, read as an RFC 3339 instant
   (`pk_med_records::Timestamp`, so two offsets or precisions compare
-  correctly). A resource read live, from a FHIR API or a site (`method`
-  `fhir-api` or `portal`), takes its stream's `pulled_at` when it has none,
-  since a live read shows the source's state then. A resource read from
-  files (`file`) takes no such fallback, because its pull time is when the
-  folder was read, not when a statement was current. A value that does not
-  read as an instant counts as absent. A store holding one version of a
-  resource, given another whose content differs, decides by
-  `Provenance::supersedes`:
+  correctly). A resource from a FHIR API (`method` `fhir-api`) that the
+  server sent without one takes its stream's `pulled_at`, the time it was
+  last seen current. A mapped resource takes no such fallback: for a
+  `--files` import the pull time is when the folder was read, not when a
+  statement was current. A value that does not read as an instant counts
+  as absent. A store holding one version of a resource, given another,
+  decides by `Provenance::supersedes`:
 
   | Held | Incoming | Kept |
   |---|---|---|
@@ -284,10 +283,20 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   | time known | time unknown | held |
   | time unknown | either | incoming: the last import wins, as before versions were dated |
 
-  A version whose content matches the held one's in everything but
-  `meta.lastUpdated` is the same version. The store keeps its one copy,
-  files nothing again, and records the later time: a site read again
-  unchanged moves the held version's `fetched_at` forward.
+  Two versions whose content matches in everything but `meta.lastUpdated`
+  are the same version, as a site read again unchanged is. The content
+  (`pk_med_records::version::content`) is the resource without
+  `meta.lastUpdated`, a `meta` left empty by that counted as absent. The
+  order of its members and of `meta`'s does not count; every value is
+  compared as written, so a decimal's spelling does. `version::decide` gives
+  the store's filing:
+
+  | Content | Incoming supersedes held | Filing | The store |
+  |---|---|---|---|
+  | same | no | `Unchanged` | files nothing |
+  | same | yes | `Refreshed` | replaces the held copy and its provenance in place, adding no version |
+  | differs | yes | `Replaces` | makes the incoming version current; it may keep the held one as an earlier version |
+  | differs | no | `Older` | keeps the held version current; it may keep the incoming one as an earlier version |
 
 **Trailer** (`Trailer`):
 
@@ -416,7 +425,7 @@ fills it from a stream's header and one resource; the store adds the rest.
 
 | Field | | |
 |---|---|---|
-| `source` | required | `{kind, cli?, cli_version?, organization_id?, fhir_base?}`; `kind` is `fhir`, `portal`, `file`, `scan`, `drive`, `email`, `media`, `manual` or `huishouden` |
+| `source` | required | `{kind, cli?, cli_version?, organization_id?, fhir_base?}`; `kind` is `fhir`, `portal`, `scan`, `drive`, `email`, `media`, `manual` or `huishouden` |
 | `method` | required | `fhir-api`, `portal`, `scan`, `file`, `media`, `manual` or `huishouden` |
 | `source_resource` | optional | `{type, id, version_id?, last_updated?}` of the resource at the source: `version_id` and `last_updated` are the line's `meta.versionId` and `meta.lastUpdated` as written, each absent when the line has none |
 | `fetched_at` | optional | the stream's `pulled_at` |
@@ -429,8 +438,8 @@ fills it from a stream's header and one resource; the store adds the rest.
 From a stream, `method` is the header's (`fhir-api` when absent) and
 `source.kind` is `fhir` for `fhir-api`, otherwise the method itself.
 When a version's content was current is `last_updated`, or for a
-`fhir-api` or `portal` version without one, `fetched_at`
-(`Provenance::current_at`, §1.4).
+`fhir-api` version without one, `fetched_at` (`Provenance::current_at`,
+§1.4).
 
 ### 1.7 How it composes with `documents/v1`
 

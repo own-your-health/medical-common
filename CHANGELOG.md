@@ -4,25 +4,19 @@
 
 Pins cli-common v0.33.2, as v0.6.3 does.
 
-- DESIGN.md §1.1, §1.4: a `--files` stream's header `method` is `file`, no
-  longer `portal`. `portal` now means only a site the CLI read live. That
-  lets a store tell the two apart. `method::FILE` and the new
-  `source_kind::FILE` name it.
-- DESIGN.md §1.4: a resource mapped from a site leaves `meta.lastUpdated`
-  out, and its stream's `pulled_at` is its time. The exception is a
-  resource the site shows with a fixed date of its own, such as a listed
-  document and its `Binary`. Stamping the read time into every resource,
-  as v0.6.3 said, changed its bytes on every read, and a store filed
-  unchanged resources again. A version that differs from the held one only
-  in `meta.lastUpdated` is the same version: the store keeps one copy and
-  records the later time.
-- `pk-med-records`: `Provenance::current_at` falls back to `fetched_at` for
-  `portal` as well as `fhir-api`, so an undated site read compares by when
-  it was read. A `file` version still has no fallback. So a statement
-  issued after a site read replaces it, a site read after a statement
-  replaces that, and an undated statement replaces neither.
-- Already filed versions: one from a `--files` stream before this release
-  carries `method: portal`. It now compares by when its folder was read.
+- `pk-med-records`: the new `version` module covers two versions that differ
+  only in `meta.lastUpdated` (DESIGN.md §1.4). A site resource is stamped
+  with its read time, so every read changes its line, and a store that
+  keeps replaced versions filed a copy per resource per read.
+  - `version::content` is what a version is compared by: the resource
+    without `meta.lastUpdated`, member order aside, every value as written.
+  - `version::same_version` compares two versions by it.
+  - `version::decide` gives the filing: `Unchanged` (same content, not more
+    current), `Refreshed` (same content, more current: replace the held copy
+    and its provenance in place), `Replaces` or `Older`.
+- DESIGN.md §1.4: a resource the site shows with a fixed date of its own,
+  such as a listed document and its `Binary`, carries that date instead of
+  the read time.
 - `pk-med-fhir`: `FhirClient` takes a reference as an absolute URL only when
   it starts with a scheme and `://`. Before, any `://` did it, so
   `get_raw("Condition?patient=p1&code=http://snomed.info/sct|123")`, a
