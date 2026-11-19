@@ -5,7 +5,8 @@
 //! # Types
 //!
 //! [`resources`] holds Patient, Encounter, Observation, DiagnosticReport,
-//! Condition, MedicationRequest, MedicationStatement, AllergyIntolerance,
+//! Condition, MedicationRequest, MedicationDispense, MedicationStatement,
+//! AllergyIntolerance,
 //! Immunization, Procedure, DocumentReference, Binary, Coverage,
 //! ExplanationOfBenefit (CARIN Blue Button), ImagingStudy, Practitioner,
 //! Organization, Provenance, Bundle and OperationOutcome; [`datatypes`] the

@@ -87,6 +87,10 @@ const SYNTHETIC: &[(&str, &str)] = &[
         include_str!("../fixtures/synthetic/MedicationRequest.json"),
     ),
     (
+        "MedicationDispense",
+        include_str!("../fixtures/synthetic/MedicationDispense.json"),
+    ),
+    (
         "MedicationStatement",
         include_str!("../fixtures/synthetic/MedicationStatement.json"),
     ),

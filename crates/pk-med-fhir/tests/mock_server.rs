@@ -239,6 +239,7 @@ fn every_synthetic_resource_round_trips_through_its_type() {
     check::<pk_med_fhir::DocumentReference>();
     check::<Binary>();
     check::<pk_med_fhir::MedicationRequest>();
+    check::<pk_med_fhir::MedicationDispense>();
     check::<pk_med_fhir::MedicationStatement>();
     check::<pk_med_fhir::AllergyIntolerance>();
     check::<pk_med_fhir::Immunization>();
@@ -247,7 +248,64 @@ fn every_synthetic_resource_round_trips_through_its_type() {
     check::<pk_med_fhir::Coverage>();
     check::<ExplanationOfBenefit>();
     check::<pk_med_fhir::Provenance>();
-    assert_eq!(test_util::synthetic_types().len(), 18);
+    assert_eq!(test_util::synthetic_types().len(), 19);
+}
+
+#[test]
+fn a_pharmacy_fill_reads_its_drug_pharmacy_and_prescriber() {
+    use pk_med_fhir::{MedicationDispense, MedicationRequest, Resource};
+    let fill: MedicationDispense = test_util::synthetic("MedicationDispense")[0]
+        .parse_as()
+        .unwrap();
+    let drug = fill.medication_codeable_concept.as_ref().unwrap();
+    let ndc = drug
+        .coding
+        .iter()
+        .find(|c| c.system.as_deref() == Some("http://hl7.org/fhir/sid/ndc"))
+        .unwrap();
+    assert_eq!(ndc.code.as_deref(), Some("00000-0000-01"));
+    assert_eq!(fill.status.as_deref(), Some("completed"));
+    assert_eq!(
+        fill.type_.as_ref().unwrap().coding[0].code.as_deref(),
+        Some("RF")
+    );
+    assert_eq!(
+        fill.days_supply.as_ref().unwrap().code.as_deref(),
+        Some("d")
+    );
+    assert_eq!(fill.when_handed_over.as_deref(), Some("2020-01-05"));
+    assert_eq!(
+        fill.dosage_instruction[0].text.as_deref(),
+        Some("one tablet daily")
+    );
+    let pharmacy = fill.performer[0].actor.as_ref().unwrap();
+    assert_eq!(pharmacy.display.as_deref(), Some("Synthetic Pharmacy"));
+    assert_eq!(
+        pharmacy.identifier.as_ref().unwrap().system.as_deref(),
+        Some("http://hl7.org/fhir/sid/us-npi")
+    );
+    let substitution = fill.substitution.as_ref().unwrap();
+    assert_eq!(substitution.was_substituted, Some(true));
+    assert_eq!(
+        substitution.type_.as_ref().unwrap().coding[0]
+            .code
+            .as_deref(),
+        Some("G")
+    );
+    let rx: MedicationRequest = fill
+        .find_contained(
+            fill.authorizing_prescription[0]
+                .reference
+                .as_deref()
+                .unwrap(),
+        )
+        .unwrap();
+    let prescriber = rx.requester.unwrap();
+    assert_eq!(prescriber.display.as_deref(), Some("Dr. Example Doctor"));
+    assert_eq!(
+        prescriber.identifier.unwrap().value.as_deref(),
+        Some("0000000001")
+    );
 }
 
 #[test]
