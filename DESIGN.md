@@ -21,7 +21,8 @@ each profile's grants, owner-only and atomically (§1.1); v0.6.2 moves to
 cli-common v0.33.2 and names the downloaded-files source, `--files <DIR>`
 with the `records-files` capability (§1.1); v0.6.3 dates every resource
 with `meta.lastUpdated` and compares versions by it
-(`Provenance::supersedes`, §1.4). §3.6 says why no portal sign-in is
+(`Provenance::supersedes`, §1.4); v0.6.4 sets apart a re-read that changed
+only its stamp (`version::decide`, §1.4). §3.6 says why no portal sign-in is
 scripted.
 
 This document is the specification of the profile, in the style of
@@ -250,7 +251,12 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
     line is the server's text. One the server sent without it stays
     without.
   - A resource mapped from a member or patient site has `meta.lastUpdated`
-    set to the time the page was read, or the header's `pulled_at`.
+    set to the time the page was read, or the header's `pulled_at`. A
+    resource the site shows with a fixed date of its own carries that date
+    instead, as a document does: a document listed with the date it was
+    issued or created, and its `Binary`. The read time changes the line on
+    every read; the store's rule for the same version (below) keeps that
+    from filing a copy per read.
   - A resource parsed from a document (a statement, a downloaded record)
     has it set to the date printed on the document as its issue date. That
     calendar date is taken as printed, with no time-zone conversion, and
@@ -276,6 +282,25 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   | time known | time known, the same or earlier | held, so a re-import changes nothing |
   | time known | time unknown | held |
   | time unknown | either | incoming: the last import wins, as before versions were dated |
+
+  Two versions whose content matches in everything but `meta.lastUpdated`
+  are the same version, as a site read again unchanged is. The content
+  (`pk_med_records::version::content`) is the resource without
+  `meta.lastUpdated`, a `meta` left empty by that counted as absent. The
+  order of its members and of `meta`'s does not count; every value is
+  compared as written, so a decimal's spelling does. `version::decide` gives
+  the store's filing. A refresh takes where and when the version was read
+  from the incoming provenance (`source`, `method`, `source_resource`,
+  `fetched_at`) and keeps what the store decided (`filed_at`, `filed_by`,
+  `raw_path`, `classified_by`, `derived_from`), so a hand classification
+  survives every re-read:
+
+  | Content | Incoming supersedes held | Filing | The store |
+  |---|---|---|---|
+  | same | no | `Unchanged` | files nothing |
+  | same | yes | `Refreshed` | rewrites the held copy in place and refreshes its provenance (`Provenance::refreshed_by`), adding no version |
+  | differs | yes | `Replaces` | makes the incoming version current; it may keep the held one as an earlier version |
+  | differs | no | `Older` | keeps the held version current; it may keep the incoming one as an earlier version |
 
 **Trailer** (`Trailer`):
 
@@ -1168,10 +1193,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1199,3 +1224,4 @@ does not convert to the other.
 | v0.6.1 | v0.33.1 |
 | v0.6.2 | v0.33.2 |
 | v0.6.3 | v0.33.2 |
+| v0.6.4 | v0.33.2 |

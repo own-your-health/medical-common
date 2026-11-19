@@ -1,7 +1,25 @@
 # Changelog
 
-## Unreleased
+## v0.6.4 — 2026-11-19
 
+Pins cli-common v0.33.2, as v0.6.3 does.
+
+- `pk-med-records`: the new `version` module covers two versions that differ
+  only in `meta.lastUpdated` (DESIGN.md §1.4). A site resource is stamped
+  with its read time, so every read changes its line, and a store that
+  keeps replaced versions filed a copy per resource per read.
+  - `version::content` is what a version is compared by: the resource
+    without `meta.lastUpdated`, member order aside, every value as written.
+  - `version::same_version` compares two versions by it.
+  - `version::decide` gives the filing: `Unchanged` (same content, not more
+    current), `Refreshed` (same content, more current: rewrite the held copy
+    in place), `Replaces` or `Older`.
+  - `Provenance::refreshed_by` is a refreshed version's provenance: where
+    and when it was read from the incoming one, and `filed_at`, `filed_by`,
+    `raw_path`, `classified_by` and `derived_from` from the held one.
+- DESIGN.md §1.4: a resource the site shows with a fixed date of its own,
+  such as a listed document and its `Binary`, carries that date instead of
+  the read time.
 - `pk-med-fhir`: `FhirClient` takes a reference as an absolute URL only when
   it starts with a scheme and `://`. Before, any `://` did it, so
   `get_raw("Condition?patient=p1&code=http://snomed.info/sct|123")`, a

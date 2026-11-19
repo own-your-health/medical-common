@@ -5,7 +5,7 @@ The shared crates of the household's health-records CLIs, built on
 
 | Crate | Contents |
 |---|---|
-| `pk-med-records` | The `health-records/v1` profile: the `login-profiles` and `records-files` capabilities, `Organization` (`org-list/v1`), `PatientContext` (`patient-list/v1`), `Provenance` (`provenance/v1`) with when a version was current and which of two to keep (`current_at`, `supersedes`; RFC 3339 read as instants by `Timestamp`), and the `records-stream/v1` NDJSON stream with its writer and reader |
+| `pk-med-records` | The `health-records/v1` profile: the `login-profiles` and `records-files` capabilities, `Organization` (`org-list/v1`), `PatientContext` (`patient-list/v1`), `Provenance` (`provenance/v1`) with when a version was current and which of two to keep (`current_at`, `supersedes`; RFC 3339 read as instants by `Timestamp`), whether two versions are the same and how a store files one (`version::decide`), and the `records-stream/v1` NDJSON stream with its writer and reader |
 | `pk-med-fhir` | Our own FHIR R4 / US Core types, lossless on a round trip, CARIN Blue Button claims included; a read client over cli-common's transport seam (read, search with paging, Binary, OperationOutcome and status to exit codes, Retry-After); a mock SMART + FHIR server for tests (feature `test-util`) |
 | `pk-med-dicom` | Our own DICOM Part 10 header reader (implicit and explicit VR, little and big endian, deflated, sequences of undefined length; it stops at Pixel Data and never decodes a pixel), DICOMDIR reading, study and series summaries, and a synthetic study writer (feature `test-util`) |
 | `pk-med-smart` | SMART App Launch for a standalone patient app: discovery, v1 and v2 scopes, the patient launch context, public and confidential clients, the session as one entry per profile, organization and patient in the CLI's one-item vault and the move into it from one keychain item each, renewal under cli-common's refresh lock, a sign-in window in the profile's own Chrome profile (feature `browser`), Epic's dynamic client registration with a signed JWT-bearer grant (an RS384 key with feature `rsa`), vendor quirks |
@@ -23,16 +23,16 @@ but the program that asked.
 
 ```toml
 [dependencies]
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4" }
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4" }
 # The same cli-common tag medical-common pins (DESIGN.md §5):
 pk-cli-core = { git = "https://github.com/piekstra/cli-common", tag = "v0.33.2" }
 
 [dev-dependencies]
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3", features = ["test-util"] }
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3", features = ["test-util"] }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4", features = ["test-util"] }
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.4", features = ["test-util"] }
 ```
 
 A pull, in brief:
