@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- `pk-med-fhir`: `FhirClient` takes a reference as an absolute URL only when
+  it starts with a scheme and `://`. Before, any `://` did it, so
+  `get_raw("Condition?patient=p1&code=http://snomed.info/sct|123")`, a
+  relative search with a token's system in its query, was refused as
+  pointing at another server (exit 5). It now goes to the base. A
+  network-path reference (`//host/…`) is still refused, as is an absolute
+  URL on another origin.
+
 ## v0.6.3 — 2026-11-19
 
 Pins cli-common v0.33.2, as v0.6.2 does.
