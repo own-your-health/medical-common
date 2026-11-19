@@ -8,6 +8,8 @@
 //! - [`stream`]: the `records-stream/v1` NDJSON stream, its
 //!   [`RecordsWriter`] and [`RecordsReader`].
 //! - [`export`]: `records export -o <DIR>`'s file.
+//! - [`timestamp`]: RFC 3339 times compared as instants, for
+//!   [`Provenance::current_at`].
 //!
 //! Resources travel as [`RawResource`]: the server's own JSON text, so a
 //! decimal keeps its spelling from source to store.
@@ -17,6 +19,7 @@ pub mod export;
 pub mod stream;
 #[cfg(feature = "test-util")]
 pub mod test_util;
+pub mod timestamp;
 
 pub use dto::{
     org_list, patient_list, Organization, PatientContext, Provenance, ProvenanceSource,
@@ -28,3 +31,4 @@ pub use stream::{
     Finished, Header, Item, RecordsReader, RecordsWriter, Skip, Source, StreamError, Trailer,
     TrailerError, END_SCHEMA, MAX_LINE_BYTES, STREAM_SCHEMA,
 };
+pub use timestamp::Timestamp;
