@@ -16,7 +16,7 @@ fn fixtures() -> Vec<(String, Value)> {
         let name = path.file_name().unwrap().to_string_lossy().to_string();
         out.push((name, serde_json::from_str(&text).unwrap()));
     }
-    assert_eq!(out.len(), 18);
+    assert_eq!(out.len(), 19);
     out
 }
 
@@ -194,6 +194,8 @@ fn dates_of_care_are_in_2019_or_2020() {
         "recorded",
         "started",
         "lastUpdated",
+        "whenPrepared",
+        "whenHandedOver",
     ] {
         dates.extend(all(key));
     }

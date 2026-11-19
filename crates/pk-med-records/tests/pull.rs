@@ -80,7 +80,7 @@ fn a_pull_streams_every_type_and_the_store_reads_it_back() {
     let mut out = Vec::new();
     let trailer = pull(&mock, &mut out);
     assert!(trailer.complete);
-    assert_eq!(trailer.counts.len(), 17, "{:?}", trailer.counts);
+    assert_eq!(trailer.counts.len(), 18, "{:?}", trailer.counts);
     assert_eq!(trailer.counts["Observation"], 3);
     assert_eq!(trailer.skipped.len(), 1);
     assert_eq!(trailer.skipped[0].code, skip::UNSUPPORTED);

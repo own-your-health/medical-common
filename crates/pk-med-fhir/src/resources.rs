@@ -576,6 +576,144 @@ impl Resource for MedicationRequest {
     }
 }
 
+/// MedicationDispense: a fill at a pharmacy, as the pharmacy or a pharmacy
+/// benefit manager reports it. The prescriber, when the source names one
+/// without a prescription of its own, is the `requester` of a contained
+/// MedicationRequest that `authorizing_prescription` points at
+/// ([`Resource::find_contained`]).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MedicationDispense {
+    /// Always `"MedicationDispense"`.
+    pub resource_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<Meta>,
+    /// The prescription number, the claim for the fill.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub identifier: Vec<Identifier>,
+    /// `completed`; `cancelled` for a reversed claim; `preparation`,
+    /// `in-progress`, `on-hold`, `stopped`, `declined`, `entered-in-error`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<CodeableConcept>,
+    /// The drug: NDC (`http://hl7.org/fhir/sid/ndc`), RxNorm.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub medication_codeable_concept: Option<CodeableConcept>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub medication_reference: Option<Reference>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject: Option<Reference>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<Reference>,
+    /// Who dispensed it: the pharmacy, by NPI or NCPDP id.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub performer: Vec<MedicationDispensePerformer>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub location: Option<Reference>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub authorizing_prescription: Vec<Reference>,
+    /// First fill or refill: v3 ActPharmacySupplyType (`FF`, `RF`).
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "type")]
+    pub type_: Option<CodeableConcept>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quantity: Option<Quantity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub days_supply: Option<Quantity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub when_prepared: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub when_handed_over: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dosage_instruction: Vec<Dosage>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub substitution: Option<MedicationDispenseSubstitution>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub note: Vec<Annotation>,
+    /// Every element this type does not name: extensions, `_` primitive
+    /// extensions, choice types and elements not typed here.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+impl Default for MedicationDispense {
+    fn default() -> Self {
+        MedicationDispense {
+            resource_type: "MedicationDispense".into(),
+            id: None,
+            meta: None,
+            identifier: Vec::new(),
+            status: None,
+            category: None,
+            medication_codeable_concept: None,
+            medication_reference: None,
+            subject: None,
+            context: None,
+            performer: Vec::new(),
+            location: None,
+            authorizing_prescription: Vec::new(),
+            type_: None,
+            quantity: None,
+            days_supply: None,
+            when_prepared: None,
+            when_handed_over: None,
+            dosage_instruction: Vec::new(),
+            substitution: None,
+            note: Vec::new(),
+            extra: Map::new(),
+        }
+    }
+}
+
+impl Resource for MedicationDispense {
+    const TYPE: &'static str = "MedicationDispense";
+    fn id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+    fn meta(&self) -> Option<&Meta> {
+        self.meta.as_ref()
+    }
+    fn extra(&self) -> &Map<String, Value> {
+        &self.extra
+    }
+}
+
+/// Who took part in a dispense, and as what.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MedicationDispensePerformer {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub function: Option<CodeableConcept>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actor: Option<Reference>,
+    /// Every element this type does not name: extensions, `_` primitive
+    /// extensions, choice types and elements not typed here.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+/// Whether the pharmacy dispensed something other than what was prescribed:
+/// a generic for a brand, and why.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MedicationDispenseSubstitution {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub was_substituted: Option<bool>,
+    /// v3 substanceAdminSubstitution (`G` generic, `E` equivalent, ...).
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "type")]
+    pub type_: Option<CodeableConcept>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub reason: Vec<CodeableConcept>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub responsible_party: Vec<Reference>,
+    /// Every element this type does not name: extensions, `_` primitive
+    /// extensions, choice types and elements not typed here.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
 /// MedicationStatement: a medication the patient is or was taking.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

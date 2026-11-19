@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.6.5 — 2026-11-19
+
+Pins cli-common v0.33.2, as v0.6.4 does.
+
+- `pk-med-fhir`: `MedicationDispense`, a pharmacy fill, with
+  `MedicationDispensePerformer` and `MedicationDispenseSubstitution` (from
+  the caremark-cli session). It names the identifiers (prescription and
+  claim number), status (`cancelled` for a reversed claim), the drug (NDC,
+  RxNorm), the pharmacy as `performer`, `type` (first fill or refill),
+  `quantity`, `daysSupply`, `whenPrepared`, `whenHandedOver`, the dosage
+  text and `substitution`. A prescriber the source names without a
+  prescription of its own is the `requester` of a contained
+  MedicationRequest that `authorizingPrescription` points at. A synthetic
+  fill joins the mock server's resources.
+- DESIGN.md §1.4: a held copy with no provenance of its own (a `Binary` or
+  `Practitioner` no record was filed from) is decided against a provenance
+  with no known time, so other content replaces it, as medrec does.
+
 ## v0.6.4 — 2026-11-19
 
 Pins cli-common v0.33.2, as v0.6.3 does.

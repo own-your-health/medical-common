@@ -1,0 +1,114 @@
+[
+  {
+    "resourceType": "MedicationDispense",
+    "id": "meddisp-0001",
+    "meta": {
+      "lastUpdated": "2020-01-05T00:00:00Z"
+    },
+    "contained": [
+      {
+        "resourceType": "MedicationRequest",
+        "id": "rx-0001",
+        "status": "completed",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "text": "Synthetic tablet 10 mg"
+        },
+        "subject": {
+          "reference": "Patient/pat-0001",
+          "display": "Robin Testperson"
+        },
+        "requester": {
+          "identifier": {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "0000000001"
+          },
+          "display": "Dr. Example Doctor"
+        }
+      }
+    ],
+    "identifier": [
+      {
+        "system": "https://example.com/fhir/sid/rx-number",
+        "value": "0000001"
+      },
+      {
+        "system": "https://example.com/fhir/sid/claim-number",
+        "value": "0000002"
+      }
+    ],
+    "status": "completed",
+    "medicationCodeableConcept": {
+      "coding": [
+        {
+          "system": "http://hl7.org/fhir/sid/ndc",
+          "code": "00000-0000-01",
+          "display": "Synthetic tablet 10 mg"
+        },
+        {
+          "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+          "code": "0000001"
+        }
+      ],
+      "text": "Synthetic tablet 10 mg"
+    },
+    "subject": {
+      "reference": "Patient/pat-0001",
+      "display": "Robin Testperson"
+    },
+    "performer": [
+      {
+        "actor": {
+          "identifier": {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "0000000002"
+          },
+          "display": "Synthetic Pharmacy"
+        }
+      }
+    ],
+    "authorizingPrescription": [
+      {
+        "reference": "#rx-0001"
+      }
+    ],
+    "type": {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "RF",
+          "display": "Refill"
+        }
+      ]
+    },
+    "quantity": {
+      "value": 30,
+      "unit": "tablet"
+    },
+    "daysSupply": {
+      "value": 30,
+      "unit": "d",
+      "system": "http://unitsofmeasure.org",
+      "code": "d"
+    },
+    "whenPrepared": "2020-01-04T15:00:00Z",
+    "whenHandedOver": "2020-01-05",
+    "dosageInstruction": [
+      {
+        "text": "one tablet daily"
+      }
+    ],
+    "substitution": {
+      "wasSubstituted": true,
+      "type": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-substanceAdminSubstitution",
+            "code": "G",
+            "display": "generic composition"
+          }
+        ]
+      }
+    }
+  }
+]
