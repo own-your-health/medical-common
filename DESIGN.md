@@ -56,6 +56,7 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 <bin> auth status --profile <NAME>                          # auth-status/v1
 <bin> auth logout --profile <NAME>
 <bin> patients list --profile <NAME>                        # patient-list/v1
+<bin> patients label --profile <NAME> --patient <ID> (<WHO> | --clear)   # the household's own name for one member
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] --ndjson    # records-stream/v1 on stdout
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] -o <DIR>    # the same stream to <DIR>/records.ndjson (records.incomplete.ndjson if it ends incomplete); records-export/v1 on stdout, its path the file written
 <bin> patients list --files <DIR>                           # a source of downloaded files (below), no login
@@ -68,6 +69,15 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 - `orgs search` matches `name`, `aliases` and `location`, case-insensitive.
 - `--patient` takes a `PatientContext.id`, or its `label`. With one
   context signed in, it may be omitted.
+- `patients label` sets the household's own name for one member of a
+  profile, in that member's grant (below), replacing any label it had.
+  `--clear` removes it. It is how a member gets a label when one sign-in
+  sees several people, as an insurer's family account does, since `auth
+  login --label` names only the patient of the sign-in. A label is unique
+  within the profile, so `--patient <label>` is never ambiguous: a label
+  another member of the profile holds is exit 2. The command makes no
+  request and reads no secret. A name the source shows for a person is
+  `PatientContext.name`, never a label (§1.3).
 - `--since` bounds each search by the date parameter the source documents
   for the type, and leaves a type the source documents none for unbounded
   rather than guess one (`_lastUpdated` can turn a whole search into a 400).

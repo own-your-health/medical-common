@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- DESIGN.md §1: `patients label --profile <NAME> --patient <ID> (<WHO> |
+  --clear)` sets or removes the household's own name for one member, in
+  that member's grant. A sign-in that sees several people (an insurer's
+  family account) has no other way to label them, since `auth login
+  --label` names only the patient of the sign-in. A label is unique within
+  the profile, so a duplicate is exit 2. A name read from the source is
+  `PatientContext.name`, never a label (from the uhc-cli session).
 - DESIGN.md §1.3: a derived patient id's identifiers may be joined by a
   separator neither can contain, as well as length-prefixed. The digest
   may be hex of either case, a prefix of at least 12 digits, and may
