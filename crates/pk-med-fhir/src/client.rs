@@ -799,8 +799,6 @@ fn check_type(resource_type: &str) -> Result<(), CliError> {
     }
 }
 
-/// Whether a path's segments, before its query, include `.` or `..`, spelled
-/// out or percent-encoded (`%2e%2e`): a URL parser resolves both.
 /// Whether `reference` is an absolute URL: it starts with a scheme and
 /// `://` (RFC 3986: a letter, then letters, digits, `+`, `-` or `.`). A
 /// relative search may carry `://` in its query, as a token's system does
@@ -814,6 +812,8 @@ fn is_absolute(reference: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
 }
 
+/// Whether a path's segments, before its query, include `.` or `..`, spelled
+/// out or percent-encoded (`%2e%2e`): a URL parser resolves both.
 pub(crate) fn has_dot_segment(path: &str) -> bool {
     path.split(['?', '#'])
         .next()
@@ -1138,6 +1138,10 @@ mod tests {
         let path = "Condition?patient=p1&code=http://snomed.info/sct|123";
         block_on(c.get_raw(path)).unwrap();
         assert_eq!(c.transport().seen.borrow()[0].url, format!("{BASE}/{path}"));
+    }
+
+    #[test]
+    fn is_absolute_follows_the_rfc_3986_scheme_syntax() {
         for (reference, absolute) in [
             ("https://fhir.example.test/r4/Patient/p1", true),
             ("HTTP://fhir.example.test/r4", true),
