@@ -3,11 +3,15 @@
 ## Unreleased
 
 - DESIGN.md §1.3: a derived patient id's identifiers may be joined by a
-  separator neither can contain, as well as length-prefixed, and the
-  digest may be a hex prefix of at least 12 digits, which is uhc-cli's
-  form. A digest of a short identifier can be recovered by trying every
-  value, so a derived id is handled as the identifier it comes from (from
-  the uhc-cli session).
+  separator neither can contain, as well as length-prefixed. The digest
+  may be hex of either case, a prefix of at least 12 digits, and may
+  follow a fixed letter, which is uhc-cli's form (from the uhc-cli
+  session).
+- DESIGN.md §1.3 and PRIVACY.md: a digest of a short identifier can be
+  recovered by trying every value, so a derived id is handled as the
+  identifier it comes from. It is never committed, logged or put in an
+  error message, and error text names a patient by `label`. No scan
+  enforces it.
 - DESIGN.md §1.3: a CLI that maps a non-FHIR source derives
   `PatientContext.id` (from the caremark-cli session).
   - The id comes from an identifier every sign-in that sees the person

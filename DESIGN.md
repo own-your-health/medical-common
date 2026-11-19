@@ -208,18 +208,23 @@ person at the source, not the sign-in:
   so a dependent seen from a parent's sign-in and from their own gets one
   id. An identifier that repeats across accounts, such as a person code
   within a family, is combined with the account's.
-- It is opaque: a one-way digest (SHA-256, hex, or a prefix of at least 12
-  hex digits) of the identifiers. Each identifier is written with its
-  length before it, or joined by a separator neither can contain, so two
-  different sets cannot run together into one. `id` appears in listings,
-  stream headers, `--patient` arguments and the store's folders, so it
-  never carries a member id or any other source identifier as written.
-  The same derivation serves every source the CLI has (§1.1).
-- A digest hides an identifier only from plain sight. One built from a
+- It is a one-way digest of the identifiers: SHA-256 in hex, of either
+  case, in full or as a prefix of at least 12 digits. It may follow a
+  fixed letter that marks the CLI's ids (uhc-cli writes `m`). Each
+  identifier is written with its length before it, or joined by a
+  separator neither can contain, so two different sets cannot run
+  together into one. The same derivation serves every source the CLI has
+  (§1.1).
+- The digest keeps the identifier out of plain sight in listings, stream
+  headers, `--patient` arguments (and so shell history) and the store's
+  folders. It does not make the id safe to publish: one built from a
   short identifier (a nine-digit member id) can be recovered by trying
-  every value. So a derived id is handled as the identifier it comes from:
-  never in a fixture, a doc, a commit, an issue or a log line, and tests
-  use synthetic ones (PRIVACY.md).
+  every value. So a derived id is handled as the identifier it comes
+  from. It is never in a fixture, a doc, a commit, an issue, a log line
+  or an error message, and tests use synthetic ones (PRIVACY.md). A
+  CLI's or a store's error text names a patient by its `label` where it
+  has one, not by `id`. No scan enforces this: a digest has no shape a
+  scan can tell from any other hex.
 - Where the source offers no identifier that the sign-ins share, the CLI
   derives the id per sign-in and says so in its docs. A store then files
   two patients for one person, which a hand merge can join, rather than
