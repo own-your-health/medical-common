@@ -719,19 +719,18 @@ one match serves both crates.
 browser profile (cli-common `Launch::profile_name`:
 `browser-profile-<profile>` under the CLI's data directory), so one login's
 cookies never sign in another, and a provider that remembers a device
-remembers it per login. `before` opens first, one tab each: a page the
+remembers it per login. `before` opens first, one tab each: a page a
 provider needs signed in before its authorize address answers. Kaiser
-Permanente's Epic organizations answer their
-`healthy.kaiserpermanente.org/…/Authentication/OAuth/Start` page with a 500
-without a kp.org session there, so mychart, at those organizations, passes
-`https://healthy.kaiserpermanente.org/sign-on`. kp's own authorize step goes
-to a sign-in on another domain (`pfam.kp.org`), which those cookies do not
-reach, so kaiser passes none.
+Permanente's Epic organizations need none. Their 500 comes from the
+capitalized `/<region>/Authentication/OAuth/Start` path, with or without a
+kp.org session. The lowercase path, opened without cookies, reaches Kaiser's
+own sign-in. mychart opens that one (its `epic::address_to_open`, 2026-11-19).
+kp's authorize step, on `pfam.kp.org`, needs none either.
 `open_at` takes a start page of the CLI's own instead, `https` or `http`
 on `127.0.0.1`. Drop the window once the code arrives: Chrome is asked to
 quit over its debug port, so the cookies it received are written and the
-next sign-in in that profile finds them (at Kaiser's Epic organizations, a
-kp.org session that is still live goes straight to consent). The system browser (`open_browser`) shares
+next sign-in in that profile finds them (a session that is still live goes
+straight to consent). The system browser (`open_browser`) shares
 one cookie jar across profiles, so a profile's sign-in does not use it.
 
 `LaunchContext` reads SMART's launch context: `patient`, `encounter` and
@@ -926,7 +925,7 @@ the provider CLIs' sessions:
 | athenahealth | forbidden, as the effort's review of its terms found | Okta Identity Engine at `identity.athenahealth.com` (`/.well-known/okta-organization`: `"pipeline": "idx"`) |
 | Epic MyChart | no binding ban. Epic's App Developer Guidelines, which are advisory, ask that a developer "does not circumvent the display of any authentication or authorization mechanisms", and approving the consent page by script would. The MyChart mobile app licence bans "automated scripts or bots", for the app only | a `captchaRequired` flag; hCaptcha or reCAPTCHA where an organization turns one on |
 | a MyChart organization's own terms | no automation clause in the one read; the organization may revoke access for any reason | as Epic MyChart |
-| Kaiser Permanente (kp.org, also the gate to Kaiser's Epic organizations) | forbidden on the plain reading: no "robot … or other automatic device, program, algorithm or methodology" may "access … any portion of the Site". Kaiser's Developer Portal terms take in kp.org's | PingOne Risk device profiling, reCAPTCHA wired in, F5; `robots.txt` disallows `/as/authorization.oauth2` |
+| Kaiser Permanente (kp.org; Kaiser's Epic organizations sign in through Kaiser's own SAML sign-in) | forbidden on the plain reading: no "robot … or other automatic device, program, algorithm or methodology" may "access … any portion of the Site". Kaiser's Developer Portal terms take in kp.org's | PingOne Risk device profiling, reCAPTCHA wired in, F5; `robots.txt` disallows `/as/authorization.oauth2` |
 | UnitedHealthcare (HealthSafe ID) | forbidden: "automated software, devices, scripts, robots", and circumventing a block | ThreatMetrix device profiling, reCAPTCHA |
 
 ### 3.7 Tests

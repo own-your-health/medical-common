@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- DESIGN.md §3.1 and `SignInWindow`'s docs: Kaiser Permanente's Epic
+  organizations need no page before the authorize address. v0.6.1's docs
+  said a kp.org session was missing. mychart found on 2026-11-19 that the
+  500 comes from the capitalized `/<region>/Authentication/OAuth/Start`
+  path, with or without a kp.org session, and that the lowercase path reaches
+  Kaiser's sign-in. mychart handles this itself. `before` is unchanged as a
+  mechanism. No code change.
+
 ## v0.6.2 — 2026-11-17
 
 Pins cli-common v0.33.2 for every `pk-cli-*`; a consumer moves its own
