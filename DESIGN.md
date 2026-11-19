@@ -925,7 +925,7 @@ the provider CLIs' sessions:
 | athenahealth | forbidden, as the effort's review of its terms found | Okta Identity Engine at `identity.athenahealth.com` (`/.well-known/okta-organization`: `"pipeline": "idx"`) |
 | Epic MyChart | no binding ban. Epic's App Developer Guidelines, which are advisory, ask that a developer "does not circumvent the display of any authentication or authorization mechanisms", and approving the consent page by script would. The MyChart mobile app licence bans "automated scripts or bots", for the app only | a `captchaRequired` flag; hCaptcha or reCAPTCHA where an organization turns one on |
 | a MyChart organization's own terms | no automation clause in the one read; the organization may revoke access for any reason | as Epic MyChart |
-| Kaiser Permanente (kp.org, also the gate to Kaiser's Epic organizations) | forbidden on the plain reading: no "robot … or other automatic device, program, algorithm or methodology" may "access … any portion of the Site". Kaiser's Developer Portal terms take in kp.org's | PingOne Risk device profiling, reCAPTCHA wired in, F5; `robots.txt` disallows `/as/authorization.oauth2` |
+| Kaiser Permanente (kp.org; Kaiser's Epic organizations sign in through Kaiser's own SAML sign-in) | forbidden on the plain reading: no "robot … or other automatic device, program, algorithm or methodology" may "access … any portion of the Site". Kaiser's Developer Portal terms take in kp.org's | PingOne Risk device profiling, reCAPTCHA wired in, F5; `robots.txt` disallows `/as/authorization.oauth2` |
 | UnitedHealthcare (HealthSafe ID) | forbidden: "automated software, devices, scripts, robots", and circumventing a block | ThreatMetrix device profiling, reCAPTCHA |
 
 ### 3.7 Tests
