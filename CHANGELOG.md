@@ -4,19 +4,23 @@
 
 Pins cli-common v0.33.2, as v0.6.5 does.
 
-- `pk-med-records`: when `version::decide` gets a version with other
-  content at the same time as the held one, it now returns `Replaces`,
-  where it returned `Older`. The times cannot order the two, so the last
-  import wins, as when neither has a time. Before, the store kept the
-  held copy for good in three cases:
+- `pk-med-records`: `version::decide` now breaks a tie. A version with
+  other content at the same time as the held one returns `Replaces` when
+  both came by the same route (the same `meta.source`, or neither has one)
+  and it was read later (`fetched_at`). Before, it was `Older`, and the
+  store kept the held copy for good in three cases:
   - a document a site reissues under the date it lists (labcorp-cli: a
     report whose results come in under one `reportDate`);
   - a built resource whose latest record changed without changing its
     date;
   - a newer release's mapping of the same statement.
 
-  `Provenance::supersedes` is unchanged, and a tie still keeps the held
-  version there. An identical re-import is still `Unchanged`.
+  A tie is still `Older` when the incoming version was read earlier or at
+  the same time, when either read time is unknown, or when the two came by
+  different routes. So re-importing an older stream changes nothing, and a
+  statement listed on the site and the same statement downloaded do not
+  displace each other on every import. `Provenance::supersedes` is
+  unchanged.
 - DESIGN.md §1.4: a resource built from several of the source's records (a
   prescription from its fills, a coverage from its statements) takes the
   latest record's date, a day at `00:00:00Z`. That holds whether the

@@ -286,10 +286,12 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   last seen current. A mapped resource takes no such fallback: for a
   `--files` import the pull time is when the folder was read, not when a
   statement was current. A value that does not read as an instant counts
-  as absent. A store holding one version of a resource, given another,
-  decides by `Provenance::supersedes`:
+  as absent. `Provenance::supersedes` says which of two versions is more
+  current; a store files by `version::decide` (below), which also sets
+  apart a version with the same content and decides a tie between
+  versions with other content:
 
-  | Held | Incoming | Kept |
+  | Held | Incoming | More current |
   |---|---|---|
   | time known | time known and later | incoming |
   | time known | time known, the same or earlier | held |
@@ -314,14 +316,19 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   |---|---|---|---|
   | same | no | `Unchanged` | files nothing |
   | same | yes | `Refreshed` | rewrites the held copy in place and refreshes its provenance (`Provenance::refreshed_by`), adding no version |
-  | differs | yes, or both times known and the same | `Replaces` | makes the incoming version current; it may keep the held one as an earlier version |
-  | differs | no | `Older` | keeps the held version current; it may keep the incoming one as an earlier version |
+  | differs | yes, or the same time, the same route and read later | `Replaces` | makes the incoming version current; it may keep the held one as an earlier version |
+  | differs | otherwise | `Older` | keeps the held version current; it may keep the incoming one as an earlier version |
 
-  A version with other content at the same time replaces the held one.
-  Their times cannot order them, so the last import wins, as when neither
-  has a time. Examples are a document reissued under the date it lists, a
-  built resource whose latest record changed without changing its date,
-  and a newer release's mapping of the same statement.
+  Two versions with other content at the same time are ordered by how
+  each was read. The incoming one replaces the held one only when both
+  came by the same route (the same `meta.source`, or neither has one) and
+  the incoming one was read later (`fetched_at`). That covers a document
+  reissued under the date it lists, a built resource whose latest record
+  changed without changing its date, and a newer release's mapping of the
+  same statement. Otherwise the held version stays. So re-importing an
+  older stream changes nothing, and two routes to one resource at the same
+  date (a statement listed on the site and the same statement downloaded)
+  do not displace each other on every import.
 
 **Trailer** (`Trailer`):
 
