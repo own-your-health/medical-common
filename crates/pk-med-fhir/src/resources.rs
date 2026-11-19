@@ -577,10 +577,12 @@ impl Resource for MedicationRequest {
 }
 
 /// MedicationDispense: a fill at a pharmacy, as the pharmacy or a pharmacy
-/// benefit manager reports it. The prescriber, when the source names one
-/// without a prescription of its own, is the `requester` of a contained
-/// MedicationRequest that `authorizing_prescription` points at
-/// ([`Resource::find_contained`]).
+/// benefit manager reports it. The prescriber is the `requester` of the
+/// MedicationRequest that `authorizing_prescription` points at. A
+/// prescription the source numbers is a MedicationRequest of its own in the
+/// same stream, which every fill of it names (`MedicationRequest/<id>`,
+/// [`Reference::target`]). A prescriber named without a prescription is the
+/// `requester` of a contained one (`#<id>`, [`Resource::find_contained`]).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MedicationDispense {

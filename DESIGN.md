@@ -515,9 +515,12 @@ so `records-stream/v1` holds with or without them.
 
 Our own serde types for the FHIR R4 / US Core subset the household's
 records use: Patient, Encounter, Observation, DiagnosticReport, Condition,
-MedicationRequest, MedicationDispense (a pharmacy fill; a prescriber with
-no prescription of its own is the requester of a contained
-MedicationRequest), MedicationStatement, AllergyIntolerance, Immunization,
+MedicationRequest, MedicationDispense (a pharmacy fill; its prescriber is
+the requester of the MedicationRequest its `authorizingPrescription` names:
+a prescription the source numbers is its own resource in the stream,
+`MedicationRequest/<id>`, shared by its fills; a prescriber named without
+a prescription is the requester of a contained one, `#<id>`),
+MedicationStatement, AllergyIntolerance, Immunization,
 Procedure, DocumentReference, Binary, Coverage, ExplanationOfBenefit (CARIN
 Blue Button: lines, adjudication amounts, totals, payment, benefit
 balances), ImagingStudy, Practitioner, Organization, Provenance, Bundle and

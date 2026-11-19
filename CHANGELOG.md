@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- DESIGN.md §2.1 and `MedicationDispense`'s docs: a prescription the source
+  numbers is a MedicationRequest of its own in the stream, which each of its
+  fills names as `MedicationRequest/<id>` (read with `Reference::target`), as
+  caremark-cli writes it. A contained MedicationRequest (`#<id>`) is only for
+  a prescriber named without a prescription. v0.6.5 named the contained form
+  only.
+
 ## v0.6.5 — 2026-11-19
 
 Pins cli-common v0.33.2, as v0.6.4 does.
