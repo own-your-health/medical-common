@@ -8,7 +8,7 @@ fn eob(text: &str) -> RawResource {
 /// A synthetic claim as a site shows it, stamped with when it was read.
 fn claim(stamp: &str, total: &str) -> RawResource {
     eob(&format!(
-        r#"{{"resourceType":"ExplanationOfBenefit","id":"eob-0001","meta":{{"lastUpdated":"{stamp}","source":"uhc:portal"}},"status":"active","total":[{{"amount":{{"value":{total},"currency":"USD"}}}}]}}"#
+        r#"{{"resourceType":"ExplanationOfBenefit","id":"eob-0001","meta":{{"lastUpdated":"{stamp}","source":"uhc:member-site"}},"status":"active","total":[{{"amount":{{"value":{total},"currency":"USD"}}}}]}}"#
     ))
 }
 
@@ -219,7 +219,7 @@ fn a_later_read_by_the_same_route_breaks_a_tie() {
 fn two_routes_at_the_same_time_keep_the_held_copy() {
     // One statement, listed on the site and downloaded, dated the same day.
     let site_copy = claim(MARCH_10, "12.50");
-    let statement_copy = eob(&site_copy.raw.replace("uhc:portal", "uhc:eob-pdf"));
+    let statement_copy = eob(&site_copy.raw.replace("uhc:member-site", "uhc:eob-pdf"));
     let site_read = listed(MARCH_10, MARCH_10);
     let folder_read = listed(MARCH_10, MARCH_15_READ);
     assert!(!same_version(&site_copy, &statement_copy));
