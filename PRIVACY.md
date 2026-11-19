@@ -12,6 +12,10 @@ data a household has.
 - Names, birth dates, addresses, phone numbers, email addresses of anyone
 - Medical record numbers, member, subscriber and group ids, claim numbers,
   NPIs of real clinicians
+- Real patient ids a CLI derives from those identifiers (DESIGN.md §1.3).
+  A digest of a short identifier, such as a nine-digit member id, is
+  recovered by trying every value. No scan catches one, since a digest
+  looks like any other hex, so this rule holds by review alone.
 - Real amounts from real claims or bills
 - Tokens, client secrets, session cookies, registration keys (these live in
   the OS keychain, owned by each CLI)
