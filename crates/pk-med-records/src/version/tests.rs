@@ -114,7 +114,7 @@ fn a_site_read_again_unchanged_refreshes_the_held_copy() {
 }
 
 #[test]
-fn other_content_replaces_only_when_more_current() {
+fn other_content_replaces_unless_less_current() {
     let held = claim(MARCH_10, "12.50");
     let later = claim(MARCH_15, "13.50");
     assert_eq!(
@@ -124,6 +124,28 @@ fn other_content_replaces_only_when_more_current() {
     assert_eq!(
         decide(&later, &site(MARCH_15), &held, &site(MARCH_10)),
         Filing::Older
+    );
+    // Reissued under the same date, written in another offset: the times
+    // cannot order them, so the last import wins, in either order.
+    let reissued = claim("2026-03-10T09:00:00-05:00", "13.50");
+    let same_time = site("2026-03-10T09:00:00-05:00");
+    assert_eq!(
+        decide(&held, &site(MARCH_10), &reissued, &same_time),
+        Filing::Replaces
+    );
+    assert_eq!(
+        decide(&reissued, &same_time, &held, &site(MARCH_10)),
+        Filing::Replaces
+    );
+    // The same content at the same time is still nothing to file.
+    assert_eq!(
+        decide(
+            &held,
+            &site(MARCH_10),
+            &claim("2026-03-10T09:00:00-05:00", "12.50"),
+            &same_time
+        ),
+        Filing::Unchanged
     );
     // A statement with no printed date never displaces a dated read.
     let undated =

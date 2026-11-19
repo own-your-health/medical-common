@@ -23,8 +23,9 @@ with the `records-files` capability (§1.1); v0.6.3 dates every resource
 with `meta.lastUpdated` and compares versions by it
 (`Provenance::supersedes`, §1.4); v0.6.4 sets apart a re-read that changed
 only its stamp (`version::decide`, §1.4); v0.6.5 types a pharmacy fill
-(`MedicationDispense`, §2.1). §3.6 says why no portal sign-in is
-scripted.
+(`MedicationDispense`, §2.1); v0.6.6 lets other content at the same time
+replace the held version (`version::decide`, §1.4). §3.6 says why no
+portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -252,13 +253,12 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
     line is the server's text. One the server sent without it stays
     without.
   - A resource mapped from a member or patient site has `meta.lastUpdated`
-    set to the time the page was read, or the header's `pulled_at`. That
-    includes a document the site lists and its `Binary`, whatever date the
-    site lists them with. A site may reissue a document under the date it
-    lists (a lab report while its results come in), and the reissue must
-    rank after the copy read before it. The read time changes the line on
-    every read; the store's rule for the same version (below) refreshes an
-    unchanged copy in place rather than filing one per read.
+    set to the time the page was read, or the header's `pulled_at`. A
+    resource the site shows with a fixed date of its own carries that date
+    instead, as a document does: a document listed with the date it was
+    issued or created, and its `Binary`. The read time changes the line on
+    every read; the store's rule for the same version (below) keeps that
+    from filing a copy per read.
   - A resource parsed from a document (a statement, a downloaded record)
     has it set to the date printed on the document as its issue date. That
     calendar date is taken as printed, with no time-zone conversion, and
@@ -268,12 +268,15 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
     docs name the printed date it takes for each kind of document.
   - A resource a producer builds from several of the source's records (a
     prescription from its fills, a coverage from its statements) takes the
-    date of the latest of them, a day written as `00:00:00Z`. Its content
-    comes from that record and from what the records share, never from
-    the range a pull covered (an earliest fill, a count of fills). Two
-    copies with the same date are then the same, so the tie that keeps the
-    held one loses nothing, and a narrower pull cannot displace a fuller
-    copy.
+    date of the latest of them, a day written as `00:00:00Z`, whether the
+    records were read from a site or parsed from documents. This rule comes
+    before the site and document rules above. Its content comes from that
+    record and from what the records share, never from the range a pull
+    covered (an earliest fill, a count of fills). A narrower pull that
+    reaches the latest record then makes the same content and files
+    nothing. A copy whose latest record changed without changing its date
+    (a fill picked up or reversed, a corrected statement) has other content
+    at the same time and replaces the held one (below).
   - Otherwise it is left out.
 
   A version's time is its `meta.lastUpdated`, read as an RFC 3339 instant
@@ -289,7 +292,7 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   | Held | Incoming | Kept |
   |---|---|---|
   | time known | time known and later | incoming |
-  | time known | time known, the same or earlier | held, so a re-import changes nothing |
+  | time known | time known, the same or earlier | held |
   | time known | time unknown | held |
   | time unknown | either | incoming: the last import wins, as before versions were dated |
 
@@ -311,8 +314,14 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   |---|---|---|---|
   | same | no | `Unchanged` | files nothing |
   | same | yes | `Refreshed` | rewrites the held copy in place and refreshes its provenance (`Provenance::refreshed_by`), adding no version |
-  | differs | yes | `Replaces` | makes the incoming version current; it may keep the held one as an earlier version |
+  | differs | yes, or both times known and the same | `Replaces` | makes the incoming version current; it may keep the held one as an earlier version |
   | differs | no | `Older` | keeps the held version current; it may keep the incoming one as an earlier version |
+
+  A version with other content at the same time replaces the held one.
+  Their times cannot order them, so the last import wins, as when neither
+  has a time. Examples are a document reissued under the date it lists, a
+  built resource whose latest record changed without changing its date,
+  and a newer release's mapping of the same statement.
 
 **Trailer** (`Trailer`):
 
@@ -1214,10 +1223,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.5" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.5" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.5" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.5" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.6" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1247,3 +1256,4 @@ does not convert to the other.
 | v0.6.3 | v0.33.2 |
 | v0.6.4 | v0.33.2 |
 | v0.6.5 | v0.33.2 |
+| v0.6.6 | v0.33.2 |

@@ -25,29 +25,34 @@ pub enum Filing {
     /// and its provenance with [`Provenance::refreshed_by`], which keeps
     /// what the store decided. No version is added.
     Refreshed,
-    /// Other content, more current: the incoming version becomes current. The
-    /// store may keep the held one as an earlier version.
+    /// Other content, more current or as current: the incoming version
+    /// becomes current. At the same time the last import wins, as when
+    /// neither has a time: a document reissued under the date it lists, a
+    /// newer release's mapping. The store may keep the held one as an
+    /// earlier version.
     Replaces,
-    /// Other content, not more current: the held version stays current. The
-    /// store may keep the incoming one as an earlier version.
+    /// Other content, less current, or with no known time against a held
+    /// version with one: the held version stays current. The store may keep
+    /// the incoming one as an earlier version.
     Older,
 }
 
 /// How a store holding `held`, filed with `held_provenance`, files
 /// `incoming`: by whether their [`content`] is the same, then by
-/// [`Provenance::supersedes`].
+/// [`Provenance::supersedes`]. Other content at the same time replaces
+/// `held`, because the times cannot order the two.
 pub fn decide(
     held: &RawResource,
     held_provenance: &Provenance,
     incoming: &RawResource,
     incoming_provenance: &Provenance,
 ) -> Filing {
-    match (
-        same_version(held, incoming),
-        incoming_provenance.supersedes(held_provenance),
-    ) {
-        (true, false) => Filing::Unchanged,
-        (true, true) => Filing::Refreshed,
+    let later = incoming_provenance.supersedes(held_provenance);
+    // Neither supersedes the other only when both times are known and equal.
+    let tie = !later && !held_provenance.supersedes(incoming_provenance);
+    match (same_version(held, incoming), later || tie) {
+        (true, _) if later => Filing::Refreshed,
+        (true, _) => Filing::Unchanged,
         (false, true) => Filing::Replaces,
         (false, false) => Filing::Older,
     }
