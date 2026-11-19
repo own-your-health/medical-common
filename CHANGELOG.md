@@ -1,14 +1,25 @@
 # Changelog
 
-## Unreleased
+## v0.6.7 — 2026-11-19
 
-- DESIGN.md §1: `patients label --profile <NAME> --patient <ID> (<WHO> |
-  --clear)` sets or removes the household's own name for one member, in
-  that member's grant. A sign-in that sees several people (an insurer's
-  family account) has no other way to label them, since `auth login
-  --label` names only the patient of the sign-in. A label is unique within
-  the profile, so a duplicate is exit 2. A name read from the source is
-  `PatientContext.name`, never a label (from the uhc-cli session).
+Pins cli-common v0.33.2, as v0.6.6 does.
+
+- `pk-med-records`: `PATIENT_LABELS` (`"patient-labels"`), the `cli-info/v1`
+  capability of a CLI with `patients label`.
+- DESIGN.md §1 and §1.3: `patients label --profile <NAME> --patient <ID>
+  (<WHO> | --clear)` sets or removes the household's own name for one
+  member, in that member's grant (from the uhc-cli session). A sign-in that
+  sees several people (an insurer's family account) has no other way to
+  label them, since `auth login --label` names only the patient of the
+  sign-in.
+  - Exit codes: an unknown member is exit 4. A label held by another member
+    or equal to a member's id is exit 2, as are an empty label and a wrong
+    argument combination.
+  - Setting the same label or clearing an unset one changes nothing.
+  - `--json` prints `patient-list/v1` with the one member. Errors echo no
+    `name` and no derived id.
+  - A name read from the source is `PatientContext.name`, never copied into
+    a label.
 - DESIGN.md §1.3: a derived patient id's identifiers may be joined by a
   separator neither can contain, as well as length-prefixed. The digest
   may be hex of either case, a prefix of at least 12 digits, and may
