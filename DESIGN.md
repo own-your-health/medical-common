@@ -19,8 +19,10 @@ it (§3.2), and a sign-in window per profile (§3.1); v0.6.1 moves to
 cli-common v0.33.1, whose `ConfigStore::save` writes the config, and with it
 each profile's grants, owner-only and atomically (§1.1); v0.6.2 moves to
 cli-common v0.33.2 and names the downloaded-files source, `--files <DIR>`
-with the `records-files` capability (§1.1). §3.6 says why no portal
-sign-in is scripted.
+with the `records-files` capability (§1.1); v0.6.3 dates every resource
+with `meta.lastUpdated` and compares versions by it
+(`Provenance::current_at`, §1.4). §3.6 says why no portal sign-in is
+scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -241,20 +243,30 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
   document number), so the store's same-resource merge works. It marks each
   mapped resource with `meta.source` (`uhc:portal`, `uhc:eob-pdf`) and a
   `meta.tag` saying it was mapped.
-- Every resource carries `meta.lastUpdated`, a FHIR `instant` saying when
-  its content was current, so a store holding two versions of one resource
-  can keep the more current. It dates the content and says nothing about
-  how complete it is. The value by source:
+- A resource carries `meta.lastUpdated`, a FHIR `instant`, whenever the
+  producer knows when its content was current. It dates the content and
+  says nothing about how complete it is. The value by source:
   - A FHIR source's resource keeps the server's value as served, since the
     line is the server's text. One the server sent without it stays
-    without, and the header's `pulled_at` is when it was current.
-  - A resource mapped from a member or patient site gets the time the page
-    was read. The header's `pulled_at` serves.
+    without.
+  - A resource mapped from a member or patient site has `meta.lastUpdated`
+    set to the time the page was read, or the header's `pulled_at`.
   - A resource parsed from a document (a statement, a downloaded record)
-    gets the document's issue date, as that day at `00:00:00Z`.
-  - It is left out only when no such time is known.
+    has it set to the date printed on the document as its issue date. That
+    calendar date is taken as printed, with no time-zone conversion, and
+    written as that day at `00:00:00Z`; a document dated only to the month
+    takes the month's first day. A document ranks as the start of its day,
+    so a site read on the day it is issued ranks after it. A producer's
+    docs name the printed date it takes for each kind of document.
+  - Otherwise it is left out.
 
-  `Provenance`'s `source_resource.last_updated` is this value (§1.6).
+  A store comparing two versions of one resource takes each one's time as
+  its `meta.lastUpdated`, else the `pulled_at` of the stream it came in
+  (`Provenance::current_at`, which reads them as instants, so two offsets
+  compare correctly). It keeps the later version. On a tie, or with either
+  time unknown, it keeps the version it holds, so a re-import changes
+  nothing (`Provenance::is_more_current_than`). A version filed before
+  this rule has its `fetched_at`, so it compares too.
 
 **Trailer** (`Trailer`):
 
@@ -385,7 +397,7 @@ fills it from a stream's header and one resource; the store adds the rest.
 |---|---|---|
 | `source` | required | `{kind, cli?, cli_version?, organization_id?, fhir_base?}`; `kind` is `fhir`, `portal`, `scan`, `drive`, `email`, `media`, `manual` or `huishouden` |
 | `method` | required | `fhir-api`, `portal`, `scan`, `file`, `media`, `manual` or `huishouden` |
-| `source_resource` | optional | `{type, id, version_id?, last_updated?}` of the resource at the source |
+| `source_resource` | optional | `{type, id, version_id?, last_updated?}` of the resource at the source: `version_id` and `last_updated` are the line's `meta.versionId` and `meta.lastUpdated` as written, each absent when the line has none |
 | `fetched_at` | optional | the stream's `pulled_at` |
 | `filed_at` | required | when the store filed it, RFC 3339 |
 | `raw_path` | optional | the raw file in the records folder: `<Person>/Records/<source>/<Type>/<id>.json`, or the document as received |
@@ -395,6 +407,8 @@ fills it from a stream's header and one resource; the store adds the rest.
 
 From a stream, `method` is the header's (`fhir-api` when absent) and
 `source.kind` is `fhir` for `fhir-api`, otherwise the method itself.
+When a version's content was current is `last_updated`, else `fetched_at`
+(`Provenance::current_at`, §1.4).
 
 ### 1.7 How it composes with `documents/v1`
 
@@ -1144,10 +1158,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.2" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.2" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.2" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.2" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.3" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1174,3 +1188,4 @@ does not convert to the other.
 | v0.6.0 | v0.33.0 |
 | v0.6.1 | v0.33.1 |
 | v0.6.2 | v0.33.2 |
+| v0.6.3 | v0.33.2 |

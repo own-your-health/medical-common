@@ -1,13 +1,26 @@
 # Changelog
 
-## Unreleased
+## v0.6.3 — 2026-11-19
 
-- DESIGN.md §1.4: every resource carries `meta.lastUpdated`, the time its
-  content was current, so a store can keep the more current of two versions
-  of one resource. A FHIR source's value passes unchanged, and one it
-  omits stays omitted. A resource mapped from a site carries the time the
-  page was read. One parsed from a document carries the issue date at
-  `00:00:00Z`. No code change.
+Pins cli-common v0.33.2, as v0.6.2 does.
+
+- DESIGN.md §1.4: a resource carries `meta.lastUpdated` whenever its
+  producer knows when its content was current. A FHIR source's value
+  passes unchanged, and one it omits stays omitted. A resource mapped from
+  a site gets the time the page was read. One parsed from a document gets
+  the printed issue date, as that day at `00:00:00Z` with no time-zone
+  conversion, or the month's first day if it is dated only to the month.
+  A store keeps the later of two versions of one resource, taking each
+  one's time as its `meta.lastUpdated`, else its stream's `pulled_at`. A
+  tie or an unknown time keeps the version it holds, so a re-import is a
+  no-op. §1.6: `source_resource.last_updated` is the line's
+  `meta.lastUpdated` as written.
+- `pk-med-records`: `Provenance::current_at`, that time, and
+  `Provenance::is_more_current_than`, the comparison. Both read RFC 3339
+  through the new `Timestamp`, which compares instants written in
+  different offsets or fractional digits correctly. As strings,
+  `2026-02-28T19:00:00-05:00` sorts before `2026-03-01T00:00:00Z`, though
+  they are the same instant.
 - DESIGN.md §3.1 and `SignInWindow`'s docs: Kaiser Permanente's Epic
   organizations need no page before the authorize address. v0.6.1's docs
   said a kp.org session was missing. mychart found on 2026-11-19 that the

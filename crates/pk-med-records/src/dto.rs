@@ -2,6 +2,7 @@
 //! export summary. Every optional field is omitted when empty, so a field
 //! added within `/v1` follows the family's additive carve-out.
 
+use crate::timestamp::Timestamp;
 use std::collections::BTreeMap;
 
 use pk_cli_core::Paged;
@@ -250,6 +251,26 @@ impl Provenance {
             filed_by: filed_by.into(),
         }
     }
+
+    /// When this version's content was current (DESIGN.md §1.4): the
+    /// resource's `meta.lastUpdated` (`source_resource.last_updated`), else
+    /// when the stream it came in was pulled (`fetched_at`). A time that does
+    /// not parse counts as absent. `None` when neither is known.
+    pub fn current_at(&self) -> Option<Timestamp> {
+        self.source_resource
+            .as_ref()
+            .and_then(|r| r.last_updated.as_deref())
+            .and_then(Timestamp::parse)
+            .or_else(|| self.fetched_at.as_deref().and_then(Timestamp::parse))
+    }
+
+    /// Whether this version's content is more current than `held`'s: both
+    /// times known and this one strictly later. On a tie, or with either
+    /// unknown, it is not, so a store that replaces only on `true` keeps the
+    /// version it holds and a re-import changes nothing (§1.4).
+    pub fn is_more_current_than(&self, held: &Provenance) -> bool {
+        matches!((self.current_at(), held.current_at()), (Some(new), Some(old)) if new > old)
+    }
 }
 
 /// What `records export -o <DIR>` wrote (`records-export/v1`), on stdout.
@@ -311,6 +332,65 @@ mod tests {
         assert_eq!(serde_json::to_string(&p).unwrap(), r#"{"id":"pat-0001"}"#);
         let back: PatientContext = serde_json::from_str(r#"{"id":"pat-0001"}"#).unwrap();
         assert_eq!(back, p);
+    }
+
+    /// A filed version with the given `meta.lastUpdated` and `fetched_at`.
+    fn version(last_updated: Option<&str>, fetched_at: Option<&str>) -> Provenance {
+        Provenance {
+            source: ProvenanceSource {
+                kind: source_kind::PORTAL.into(),
+                cli: Some("uhc".into()),
+                cli_version: None,
+                organization_id: Some("uhc".into()),
+                fhir_base: None,
+            },
+            method: method::PORTAL.into(),
+            source_resource: Some(SourceResource {
+                resource_type: "ExplanationOfBenefit".into(),
+                id: "eob-0001".into(),
+                version_id: None,
+                last_updated: last_updated.map(str::to_string),
+            }),
+            fetched_at: fetched_at.map(str::to_string),
+            filed_at: "2026-03-05T00:00:00Z".into(),
+            raw_path: None,
+            classified_by: None,
+            derived_from: None,
+            filed_by: "medrec 0.0.0".into(),
+        }
+    }
+
+    #[test]
+    fn a_version_is_current_at_its_last_update_else_when_it_was_pulled() {
+        let at = |t: &str| Timestamp::parse(t).unwrap();
+        let dated = version(Some("2026-03-01T00:00:00Z"), Some("2026-03-04T10:00:00Z"));
+        assert_eq!(dated.current_at(), Some(at("2026-03-01T00:00:00Z")));
+        let undated = version(None, Some("2026-03-04T10:00:00Z"));
+        assert_eq!(undated.current_at(), Some(at("2026-03-04T10:00:00Z")));
+        let unreadable = version(Some("March 1"), Some("2026-03-04T10:00:00Z"));
+        assert_eq!(unreadable.current_at(), Some(at("2026-03-04T10:00:00Z")));
+        assert_eq!(version(None, None).current_at(), None);
+    }
+
+    #[test]
+    fn only_a_strictly_later_version_is_more_current() {
+        // A site read on 2026-03-10, held; a statement issued 2026-03-01.
+        let site = version(Some("2026-03-10T14:00:00Z"), Some("2026-03-10T14:00:00Z"));
+        let statement = version(Some("2026-03-01T00:00:00Z"), Some("2026-03-12T09:00:00Z"));
+        assert!(!statement.is_more_current_than(&site));
+        assert!(site.is_more_current_than(&statement));
+        // A site version filed before this rule has no lastUpdated: its pull
+        // time stands in, so an older statement still does not replace it.
+        let old_site = version(None, Some("2026-03-10T14:00:00Z"));
+        assert!(!statement.is_more_current_than(&old_site));
+        // The same instant in two offsets is a tie, and a tie keeps the held.
+        let same = version(Some("2026-03-10T09:00:00-05:00"), None);
+        assert!(!same.is_more_current_than(&site));
+        assert!(!site.is_more_current_than(&same));
+        // An unknown time on either side keeps the held version.
+        let unknown = version(None, None);
+        assert!(!unknown.is_more_current_than(&site));
+        assert!(!site.is_more_current_than(&unknown));
     }
 
     #[test]
