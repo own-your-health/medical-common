@@ -719,19 +719,18 @@ one match serves both crates.
 browser profile (cli-common `Launch::profile_name`:
 `browser-profile-<profile>` under the CLI's data directory), so one login's
 cookies never sign in another, and a provider that remembers a device
-remembers it per login. `before` opens first, one tab each: a page the
+remembers it per login. `before` opens first, one tab each: a page a
 provider needs signed in before its authorize address answers. Kaiser
-Permanente's Epic organizations answer their
-`healthy.kaiserpermanente.org/…/Authentication/OAuth/Start` page with a 500
-without a kp.org session there, so mychart, at those organizations, passes
-`https://healthy.kaiserpermanente.org/sign-on`. kp's own authorize step goes
-to a sign-in on another domain (`pfam.kp.org`), which those cookies do not
-reach, so kaiser passes none.
+Permanente's Epic organizations need none. Their 500 comes from the
+capitalized `/<region>/Authentication/OAuth/Start` path, with or without a
+kp.org session. The lowercase path, opened without cookies, reaches Kaiser's
+own sign-in. mychart opens that one (its `epic::address_to_open`, 2026-11-19).
+kp's authorize step, on `pfam.kp.org`, needs none either.
 `open_at` takes a start page of the CLI's own instead, `https` or `http`
 on `127.0.0.1`. Drop the window once the code arrives: Chrome is asked to
 quit over its debug port, so the cookies it received are written and the
-next sign-in in that profile finds them (at Kaiser's Epic organizations, a
-kp.org session that is still live goes straight to consent). The system browser (`open_browser`) shares
+next sign-in in that profile finds them (a session that is still live goes
+straight to consent). The system browser (`open_browser`) shares
 one cookie jar across profiles, so a profile's sign-in does not use it.
 
 `LaunchContext` reads SMART's launch context: `patient`, `encounter` and
