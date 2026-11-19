@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- DESIGN.md §1.4: a resource built from several of the source's records (a
+  prescription from its fills, a coverage from its statements) takes the
+  latest record's date. Its content comes only from that record and from
+  what the records share, never from the range a pull covered, so a tie
+  keeps an identical copy and a narrower pull cannot displace a fuller one.
 - DESIGN.md §2.1 and `MedicationDispense`'s docs: a prescription the source
   numbers is a MedicationRequest of its own in the stream, which each of its
   fills names as `MedicationRequest/<id>` (read with `Reference::target`), as

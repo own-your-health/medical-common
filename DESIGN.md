@@ -265,6 +265,14 @@ writes `pk_med_fhir::RawResource` and never re-serializes a parsed value.
     takes the month's first day. A document ranks as the start of its day,
     so a site read on the day it is issued ranks after it. A producer's
     docs name the printed date it takes for each kind of document.
+  - A resource a producer builds from several of the source's records (a
+    prescription from its fills, a coverage from its statements) takes the
+    date of the latest of them, a day written as `00:00:00Z`. Its content
+    comes from that record and from what the records share, never from
+    the range a pull covered (an earliest fill, a count of fills). Two
+    copies with the same date are then the same, so the tie that keeps the
+    held one loses nothing, and a narrower pull cannot displace a fuller
+    copy.
   - Otherwise it is left out.
 
   A version's time is its `meta.lastUpdated`, read as an RFC 3339 instant
