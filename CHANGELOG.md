@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- DESIGN.md §1.3: a CLI that maps a non-FHIR source derives
+  `PatientContext.id` from an identifier every sign-in that sees the
+  person shares, combining one that repeats across accounts (a person
+  code) with the account's. Where the source offers none, it derives the
+  id per sign-in and says so in its docs. Two patients for one person can
+  be merged by hand; one patient for two people cannot be cleanly split
+  (from the caremark-cli session).
+
 ## v0.6.6 — 2026-11-19
 
 Pins cli-common v0.33.2, as v0.6.5 does.

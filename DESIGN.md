@@ -202,6 +202,17 @@ sign-in for. `patients list` emits `Paged<PatientContext>` (`patient-list/v1`,
 | `name` | optional | the name the source shows, for the person's own terminal; never in a fixture, a log or an error message |
 | `session` | optional | the sign-in's account, `smart/<org>/<patient>` (`pk_med_smart::account`, §3.2), never the token. An opaque handle: the CLI finds the session by it within the profile the command ran as, in the vault entry `<profile>/<org>/<patient>`, or for a CLI before profiles in the keychain item of that name |
 
+A CLI that maps a non-FHIR source derives `id` itself. The id names the
+person at the source, not the sign-in. The CLI derives it from an
+identifier every sign-in that sees the person shares, so a dependent seen
+from a parent's sign-in and from their own gets one id. An identifier that
+repeats across accounts, such as a person code within a family, is
+combined with the account's. Where the source offers no identifier that
+the sign-ins share, the CLI derives the id per sign-in and says so in its
+docs. A store then files two patients for one person, which a hand merge
+can join, rather than one patient for two people, which nothing can
+cleanly split.
+
 ### 1.4 The records stream (`records-stream/v1`)
 
 `records export --ndjson` writes NDJSON to stdout: a header line, one FHIR
