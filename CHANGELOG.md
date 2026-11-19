@@ -7,7 +7,10 @@
   fills names as `MedicationRequest/<id>` (read with `Reference::target`), as
   caremark-cli writes it. A contained MedicationRequest (`#<id>`) is only for
   a prescriber named without a prescription. v0.6.5 named the contained form
-  only.
+  only. A producer writes the MedicationRequest in every stream holding a fill
+  that names it, whatever `--since` bounds. A store resolves the reference
+  among what it has filed, from that stream or an earlier one, and keeps a
+  fill whose prescription it has not filed.
 
 ## v0.6.5 — 2026-11-19
 

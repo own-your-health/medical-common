@@ -579,10 +579,13 @@ impl Resource for MedicationRequest {
 /// MedicationDispense: a fill at a pharmacy, as the pharmacy or a pharmacy
 /// benefit manager reports it. The prescriber is the `requester` of the
 /// MedicationRequest that `authorizing_prescription` points at. A
-/// prescription the source numbers is a MedicationRequest of its own in the
-/// same stream, which every fill of it names (`MedicationRequest/<id>`,
-/// [`Reference::target`]). A prescriber named without a prescription is the
-/// `requester` of a contained one (`#<id>`, [`Resource::find_contained`]).
+/// prescription the source numbers is a MedicationRequest of its own, which
+/// every fill of it names (`MedicationRequest/<id>`, [`Reference::target`]).
+/// The producer writes it in every stream holding such a fill, whatever
+/// `--since` bounds; a store looks it up among what it has filed and keeps a
+/// fill whose prescription it has not. A prescriber named without a
+/// prescription is the `requester` of a contained one (`#<id>`,
+/// [`Resource::find_contained`]).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MedicationDispense {

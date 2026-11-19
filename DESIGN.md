@@ -519,8 +519,12 @@ MedicationRequest, MedicationDispense (a pharmacy fill; its prescriber is
 the requester of the MedicationRequest its `authorizingPrescription` names:
 a prescription the source numbers is its own resource in the stream,
 `MedicationRequest/<id>`, shared by its fills; a prescriber named without
-a prescription is the requester of a contained one, `#<id>`),
-MedicationStatement, AllergyIntolerance, Immunization,
+a prescription is the requester of a contained one, `#<id>`. A producer
+writes the MedicationRequest in every stream holding a fill that names it,
+whatever `--since` bounds, as a resource read by reference is (§1). A
+store resolves the reference by `(resourceType, id)` among what it has
+filed, from this stream or an earlier one, and keeps a fill whose
+prescription it has not filed), MedicationStatement, AllergyIntolerance, Immunization,
 Procedure, DocumentReference, Binary, Coverage, ExplanationOfBenefit (CARIN
 Blue Button: lines, adjudication amounts, totals, payment, benefit
 balances), ImagingStudy, Practitioner, Organization, Provenance, Bundle and
