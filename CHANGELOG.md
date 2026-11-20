@@ -16,7 +16,10 @@ Pins cli-common v0.33.2, as v0.6.7 does.
     2, reason `NO_CLIENT`, with the guide, `<bin> registration` and the
     store command as its remedy.
   - `ClientStatus` and `with_client` add the `client` member to `info` and
-    `auth status`. `ClientStatus::text` is their human line.
+    `auth status`. `ClientStatus::text` is their human line. `StoredIn`
+    says where the client is kept. `with_client` refuses a DTO that
+    already has a `client` member, which cli-common's schemas do not
+    define.
 - `pk-med-records`: `REGISTRATION` (`"registration"`), the `cli-info/v1`
   capability of a CLI with the command.
 

@@ -1164,12 +1164,20 @@ walks through the vendor's portal, and the CLI prints the values.
 - `info --json` and `auth status --json` add a `client` member
   (`pk_med_smart::ClientStatus`, by `pk_med_smart::with_client`). It holds:
   - `configured`;
-  - when configured, `client_type` and `stored_in` (`config` or `vault`);
+  - when configured, `client_type` and `stored_in` (`config` or `vault`,
+    `pk_med_smart::StoredIn`);
   - `registration`, for a CLI with more than one;
   - `client_id`, only for a CLI that keeps it in its config.
 
   Readers that predate `client` ignore it. The human output of both
   commands adds the line `ClientStatus::text` writes.
+
+  `client` is medical-common's member of two cli-common schemas, and
+  cli-common's DESIGN does not define it. So `with_client` refuses a DTO
+  that already has a `client` member (exit 1) rather than replace it. A
+  cli-common release that adds one of its own then fails a CLI's `info
+  --json` test, and the two are reconciled there. piekstra/cli-common#89
+  proposes that cli-common own the member.
 - `info --json` lists `"registration"` (`pk_med_records::REGISTRATION`) in
   `cli-info/v1`'s `capabilities` once the command exists.
 - A CLI that registers clients dynamically (Epic, §3.4) prints the values

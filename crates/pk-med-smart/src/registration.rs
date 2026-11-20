@@ -38,6 +38,7 @@ pub enum LaunchType {
 /// How the client authenticates at the token endpoint, in SMART's terms.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
 pub enum ClientType {
     /// No secret: PKCE alone protects the code.
     Public,
@@ -299,6 +300,26 @@ pub fn missing_client(registration: &Registration, which: Option<&str>) -> CliEr
     ))
 }
 
+/// Where a configured client is kept.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum StoredIn {
+    /// The CLI's config file: a client id, which is not a secret.
+    Config,
+    /// The CLI's vault (`pk_cli_auth::vault`): a secret or a key with it.
+    Vault,
+}
+
+impl StoredIn {
+    fn text(self) -> &'static str {
+        match self {
+            StoredIn::Config => "config",
+            StoredIn::Vault => "vault",
+        }
+    }
+}
+
 /// Whether a client is configured, and which: the `client` member `info`
 /// and `auth status` add to their JSON ([`with_client`]), and a line of
 /// their human output ([`ClientStatus::text`]).
@@ -312,9 +333,8 @@ pub struct ClientStatus {
     pub registration: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_type: Option<ClientType>,
-    /// Where it is kept: `config` or `vault`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stored_in: Option<String>,
+    pub stored_in: Option<StoredIn>,
     /// The client id, for a CLI that keeps it in its config. A CLI that keeps
     /// it in the vault leaves it out.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -328,11 +348,11 @@ impl ClientStatus {
     }
 
     /// A configured client of `client_type`, kept in `stored_in`.
-    pub fn configured(client_type: ClientType, stored_in: impl Into<String>) -> Self {
+    pub fn configured(client_type: ClientType, stored_in: StoredIn) -> Self {
         ClientStatus {
             configured: true,
             client_type: Some(client_type),
-            stored_in: Some(stored_in.into()),
+            stored_in: Some(stored_in),
             ..ClientStatus::default()
         }
     }
@@ -368,8 +388,8 @@ impl ClientStatus {
         if let Some(id) = &self.client_id {
             let _ = write!(out, " {id}");
         }
-        if let Some(stored) = &self.stored_in {
-            let _ = write!(out, ", in {stored}");
+        if let Some(stored) = self.stored_in {
+            let _ = write!(out, ", in {}", stored.text());
         }
         if let Some(which) = &self.registration {
             let _ = write!(out, " ({which})");
@@ -380,12 +400,22 @@ impl ClientStatus {
 
 /// `dto` (`cli-info/v1`, `auth-status/v1`) as JSON with a `client` member
 /// added. Readers that predate it ignore it.
+///
+/// `client` is medical-common's member, not cli-common's: neither schema
+/// defines it (DESIGN.md §3.8). A `dto` that already has one is refused
+/// (exit 1), so a cli-common release that adds its own `client` fails a
+/// CLI's `info --json` test instead of being replaced on the wire.
 pub fn with_client<T: Serialize>(dto: &T, client: &ClientStatus) -> Result<Value, CliError> {
     let mut value = serde_json::to_value(dto)
         .map_err(|e| CliError::Other(format!("serializing the output: {e}")))?;
     let Value::Object(map) = &mut value else {
         return Err(CliError::Other("the output is not a JSON object".into()));
     };
+    if map.contains_key("client") {
+        return Err(CliError::Other(
+            "the output already has a `client` member; refusing to replace it".into(),
+        ));
+    }
     let client = serde_json::to_value(client)
         .map_err(|e| CliError::Other(format!("serializing the client: {e}")))?;
     map.insert("client".into(), client);

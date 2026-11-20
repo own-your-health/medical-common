@@ -115,14 +115,14 @@ fn the_client_status_is_a_line_and_a_member() {
         ClientStatus::none().text(&reg),
         "client: none configured; see docs/registration.md and `examplecli registration`"
     );
-    let status = ClientStatus::configured(ClientType::Public, "config")
+    let status = ClientStatus::configured(ClientType::Public, StoredIn::Config)
         .registration("sandbox")
         .client_id("example-client");
     assert_eq!(
         status.text(&reg),
         "client: public example-client, in config (sandbox)"
     );
-    let vaulted = ClientStatus::configured(ClientType::ConfidentialSymmetric, "vault");
+    let vaulted = ClientStatus::configured(ClientType::ConfidentialSymmetric, StoredIn::Vault);
     assert_eq!(
         vaulted.text(&reg),
         "client: confidential (secret), in vault"
@@ -133,10 +133,19 @@ fn the_client_status_is_a_line_and_a_member() {
     assert_eq!(out["schema"], "cli-info/v1");
     assert_eq!(out["client"]["configured"], true);
     assert_eq!(out["client"]["client_type"], "confidential-symmetric");
+    assert_eq!(out["client"]["stored_in"], "vault");
     assert!(out["client"].get("client_id").is_none());
     assert_eq!(
         with_client(&ClientStatus::none(), &ClientStatus::none()).unwrap()["client"]["configured"],
         false
     );
     assert!(with_client(&"text", &vaulted).is_err());
+}
+
+#[test]
+fn a_client_member_already_there_is_refused_not_replaced() {
+    let taken = serde_json::json!({"schema": "auth-status/v1", "client": {"id": "theirs"}});
+    let err = with_client(&taken, &ClientStatus::none()).unwrap_err();
+    assert_eq!(err.exit_code(), 1);
+    assert!(err.message().contains("already has a `client` member"));
 }

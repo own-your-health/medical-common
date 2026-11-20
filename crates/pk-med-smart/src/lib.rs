@@ -54,7 +54,9 @@ pub use pk_cli_auth::vault::Migration;
 pub use profiles::{migrate_sessions, ProfileSessions};
 pub use quirks::{NoQuirks, VendorQuirks};
 pub use register::{jwt_bearer_tokens, register_dynamic_client};
-pub use registration::{missing_client, with_client, ClientStatus, ClientType, Registration};
+pub use registration::{
+    missing_client, with_client, ClientStatus, ClientType, Registration, StoredIn,
+};
 pub use renew::{Renewer, SignerFor};
 #[cfg(feature = "rsa")]
 pub use rsa_key::RsaKey;
