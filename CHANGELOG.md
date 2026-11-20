@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.6.8 — 2026-11-20
+
+Pins cli-common v0.33.2, as v0.6.7 does.
+
+- `pk-med-smart`: the `registration` module (DESIGN.md §3.8), so that every
+  CLI whose vendor requires a registered app prints its registration alike
+  (from the coordinator, for the user's "usable by anyone" request).
+  - `Registration` is what to enter in the vendor's developer form: the
+    portal, the guide, the launch and client type, PKCE, the redirect URIs,
+    the scopes, the URLs and other fields in the form's order, the command
+    that stores the result, and notes. `Registration::text` renders it for
+    a person, and its JSON is `registration/v1`.
+  - `missing_client` is the error for a command that finds no client: exit
+    2, reason `NO_CLIENT`, with the guide, `<bin> registration` and the
+    store command as its remedy.
+  - `ClientStatus` and `with_client` add the `client` member to `info` and
+    `auth status`. `ClientStatus::text` is their human line.
+- `pk-med-records`: `REGISTRATION` (`"registration"`), the `cli-info/v1`
+  capability of a CLI with the command.
+
 ## v0.6.7 — 2026-11-19
 
 Pins cli-common v0.33.2, as v0.6.6 does.

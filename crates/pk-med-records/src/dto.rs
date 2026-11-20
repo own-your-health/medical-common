@@ -36,6 +36,10 @@ pub const RECORDS_FILES: &str = "records-files";
 /// sign-in that sees several people needs.
 pub const PATIENT_LABELS: &str = "patient-labels";
 
+/// The `cli-info/v1` capability of a CLI whose `registration` command prints
+/// what to enter in its vendor's developer form (DESIGN.md §3.8).
+pub const REGISTRATION: &str = "registration";
+
 /// An organization a CLI can reach: a provider's FHIR server, or an
 /// insurer's. Also the stream header's `organization`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
