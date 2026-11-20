@@ -18,6 +18,11 @@
 //!    returns the session to store; [`Renewer::renew`] makes its first grant
 //!    ([`JwtSigner`]; feature `rsa` adds an RS384 key, `RsaKey`).
 //!
+//! A CLI's `registration` command prints a [`Registration`], what to enter
+//! in the vendor's developer form; a command with no client configured fails
+//! with [`missing_client`]; `info` and `auth status` add a [`ClientStatus`]
+//! ([`with_client`]).
+//!
 //! What a vendor does differently goes in a [`VendorQuirks`]. Tokens never
 //! appear in `Debug` output or messages. What to do after an error is its
 //! remedy ([`remedy`]), not part of its message, so a CLI replaces it with
@@ -29,6 +34,7 @@ pub mod launch;
 pub mod profiles;
 pub mod quirks;
 pub mod register;
+pub mod registration;
 pub mod remedy;
 pub mod renew;
 #[cfg(feature = "rsa")]
@@ -48,6 +54,9 @@ pub use pk_cli_auth::vault::Migration;
 pub use profiles::{migrate_sessions, ProfileSessions};
 pub use quirks::{NoQuirks, VendorQuirks};
 pub use register::{jwt_bearer_tokens, register_dynamic_client};
+pub use registration::{
+    missing_client, with_client, ClientStatus, ClientType, Registration, StoredIn,
+};
 pub use renew::{Renewer, SignerFor};
 #[cfg(feature = "rsa")]
 pub use rsa_key::RsaKey;

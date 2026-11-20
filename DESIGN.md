@@ -26,8 +26,10 @@ only its stamp (`version::decide`, §1.4); v0.6.5 types a pharmacy fill
 (`MedicationDispense`, §2.1); v0.6.6 breaks a same-time tie between
 versions with other content by the later read over the same route
 (`version::decide`, §1.4); v0.6.7 names `patients label`, the household's
-own name for one member, and its `patient-labels` capability (§1). §3.6
-says why no portal sign-in is scripted.
+own name for one member, and its `patient-labels` capability (§1); v0.6.8
+adds `registration`, what to enter in a vendor's developer form, the
+missing-client error and the `client` status (§3.8). §3.6 says why no
+portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -1122,6 +1124,65 @@ A CLI's own tests:
   tests' to cover; the surface test checks the arguments and the
   nothing-to-move path.
 
+### 3.8 Registration (`registration`)
+
+A CLI whose vendor requires a registered app (Epic, athenahealth, Kaiser,
+ModMed) carries the registration in its own surface, so that anyone can
+register a client of their own. `docs/registration.md` in its repository
+walks through the vendor's portal, and the CLI prints the values.
+
+- `<bin> registration [--json]` prints what to enter in the vendor's
+  developer form. It takes no `--profile`, reads no secret and makes no
+  request. Its values are the CLI's own, with placeholders such as
+  `<CLIENT_ID>` and never a household's client id.
+  `pk_med_smart::Registration` is the description, `Registration::text` is
+  the human form, and its JSON is `registration/v1`:
+
+  | Field | | |
+  |---|---|---|
+  | `schema` | required | `registration/v1` |
+  | `cli` | required | the binary |
+  | `vendor` | required | who registers the app (`Epic on FHIR`, `athenahealth`) |
+  | `portal` | required | the developer portal's URL, where the form is |
+  | `doc` | required | the guide's path in the repository (`docs/registration.md`) |
+  | `launch` | required | `standalone-patient` |
+  | `client_type` | required | `public`, `confidential-symmetric` or `confidential-asymmetric`, in SMART's terms |
+  | `pkce` | required | `S256` |
+  | `redirect_uris` | required | every redirect URI to register, in the order the CLI tries them |
+  | `scopes` | required | every scope the CLI asks for |
+  | `urls` | optional | `[{label, value, note?}]`: the URLs the form asks for, in its order |
+  | `fields` | optional | `[{label, value, note?}]`: every other field, in the form's order, under the label the portal prints |
+  | `store` | required | the command that stores what the portal gives back (`<bin> config set client-id <CLIENT_ID>`) |
+  | `notes` | optional | one sentence each: what the portal refuses and the way around it, review times |
+
+- A command that needs a client and finds none fails with
+  `pk_med_smart::missing_client`. The error is exit 2 with the reason
+  `registration::NO_CLIENT` (`Reason::Provider("no-client")`). Its message
+  names the vendor, and the registration for a CLI with more than one
+  (`sandbox`). Its remedy names the guide, `<bin> registration` and the
+  store command. Neither names a client id.
+- `info --json` and `auth status --json` add a `client` member
+  (`pk_med_smart::ClientStatus`, by `pk_med_smart::with_client`). It holds:
+  - `configured`;
+  - when configured, `client_type` and `stored_in` (`config` or `vault`,
+    `pk_med_smart::StoredIn`);
+  - `registration`, for a CLI with more than one;
+  - `client_id`, only for a CLI that keeps it in its config.
+
+  Readers that predate `client` ignore it. The human output of both
+  commands adds the line `ClientStatus::text` writes.
+
+  `client` is medical-common's member of two cli-common schemas, and
+  cli-common's DESIGN does not define it. So `with_client` refuses a DTO
+  that already has a `client` member (exit 1) rather than replace it. A
+  cli-common release that adds one of its own then fails a CLI's `info
+  --json` test, and the two are reconciled there. piekstra/cli-common#89
+  proposes that cli-common own the member.
+- `info --json` lists `"registration"` (`pk_med_records::REGISTRATION`) in
+  `cli-info/v1`'s `capabilities` once the command exists.
+- A CLI that registers clients dynamically (Epic, §3.4) prints the values
+  for the app it registers them under.
+
 ## 4. DICOM headers (crate `pk-med-dicom`)
 
 Our own reader of DICOM Part 10 files, enough to file a disc's studies and
@@ -1299,10 +1360,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.7" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.7" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.7" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.7" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.8" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.8" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.8" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.8" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1334,3 +1395,4 @@ does not convert to the other.
 | v0.6.5 | v0.33.2 |
 | v0.6.6 | v0.33.2 |
 | v0.6.7 | v0.33.2 |
+| v0.6.8 | v0.33.2 |
