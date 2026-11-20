@@ -16,7 +16,11 @@ four have two registrations.
     that registration's command: "register one by following <doc>,
     entering what `<command>` prints, then run `<store>`".
 - `doc` is the guide's absolute `https` URL, for someone with a release
-  binary and no repository.
+  binary and no repository. `Registration::new` panics in a debug build
+  on anything else, so a CLI's tests catch a repository path left from
+  v0.6.8.
+- The JSON is `registration/v2`. v0.6.8's `registration/v1` had one
+  registration a CLI, `doc` as a repository path and no `command`.
 - `with_clients(&dto, &[ClientStatus])` adds `clients`, one entry per
   registration. It replaces `with_client` and `client`, and refuses an
   empty list or several entries that do not each name a registration of
@@ -29,6 +33,11 @@ four have two registrations.
   gets pasted into bug reports.
 - `NO_CLIENT` is `Reason::Provider("no_client")`, in the family's
   `snake_case`. cli-common v0.33.4 prints it in `--json` as `error.reason`.
+
+Not in this release's pin (cli-common v0.33.2), and coming with a later
+one: `Vault::contains` (cli-common v0.33.3), which DESIGN §3.8 names for
+a vault check that reads no keychain, and `error.reason` and
+`error.remedy` in `--json` (cli-common v0.33.4).
 
 Added:
 - `Registration::selections` (`selection`, `selection_with_note`), for a

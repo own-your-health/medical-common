@@ -88,9 +88,9 @@ fn the_text_puts_each_value_under_the_label_to_enter_it_at() {
 }
 
 #[test]
-fn the_json_is_registration_v1_in_the_spec_spelling() {
+fn the_json_is_registration_v2_in_the_spec_spelling() {
     let value = serde_json::to_value(example()).unwrap();
-    assert_eq!(value["schema"], "registration/v1");
+    assert_eq!(value["schema"], "registration/v2");
     assert_eq!(value["registration"], "sandbox");
     assert_eq!(value["command"], "examplecli registration --sandbox");
     assert_eq!(value["doc"], GUIDE);
@@ -226,4 +226,36 @@ fn a_clients_member_that_cannot_be_read_is_refused() {
     let taken = serde_json::json!({"schema": "auth-status/v1", "clients": []});
     assert!(refused(&taken, &[ClientStatus::none()]).contains("already has a `clients` member"));
     assert!(with_clients(&"text", &[ClientStatus::none()]).is_err());
+}
+
+#[test]
+fn a_guide_is_an_https_url_with_a_host() {
+    for good in [GUIDE, "HTTPS://example.com/g", "https://h"] {
+        assert!(is_https_url(good), "{good}");
+    }
+    for bad in [
+        "docs/registration.md",
+        "http://example.com/g",
+        "https://",
+        "https:///path",
+        "https://?q",
+        "ftp://example.com",
+        "",
+    ] {
+        assert!(!is_https_url(bad), "{bad}");
+    }
+}
+
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "must be the guide's absolute https URL")]
+fn a_repository_path_for_the_guide_fails_a_debug_build() {
+    let _ = Registration::new(
+        "examplecli",
+        "Example Vendor",
+        "https://developer.example.com/apps",
+        "docs/registration.md",
+        ClientType::Public,
+        "examplecli config set client-id <CLIENT_ID>",
+    );
 }

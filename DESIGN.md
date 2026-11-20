@@ -1141,16 +1141,18 @@ walks through the vendor's portal, and the CLI prints the values.
     one, chosen by a flag of its own (`--sandbox`, `--env preview`), and
     each names that command in `command`.
   - `pk_med_smart::Registration` is the description, and
-    `Registration::text` is the human form. Its JSON is `registration/v1`:
+    `Registration::text` is the human form. Its JSON is `registration/v2`.
+    v0.6.8 printed `registration/v1`, with one registration a CLI and
+    `doc` a repository path:
 
   | Field | | |
   |---|---|---|
-  | `schema` | required | `registration/v1` |
+  | `schema` | required | `registration/v2` |
   | `cli` | required | the binary |
   | `vendor` | required | who registers the app (`Epic on FHIR`, `athenahealth`) |
   | `registration` | optional | which one (`sandbox`), for a CLI with more than one |
   | `portal` | required | the developer portal's URL, where the form is |
-  | `doc` | required | the guide's absolute `https` URL, so that someone with a release binary and no repository can open it |
+  | `doc` | required | the guide's absolute `https` URL, so that someone with a release binary and no repository can open it; `Registration::new` panics in a debug build on anything else, so a CLI's tests catch it |
   | `command` | required | the command that prints this registration (`<bin> registration`, `<bin> registration --sandbox`) |
   | `launch` | required | `standalone-patient` |
   | `client_type` | required | `public`, `confidential-symmetric` or `confidential-asymmetric`, in SMART's terms |
@@ -1166,8 +1168,9 @@ walks through the vendor's portal, and the CLI prints the values.
 - A command that needs a client and finds none fails with
   `pk_med_smart::missing_client(&registration)`. The error is exit 2 with
   the reason `registration::NO_CLIENT` (`Reason::Provider("no_client")`).
-  From cli-common v0.33.4, `--json` prints it as `error.reason`, with the
-  remedy apart as `error.remedy`. Its message names the vendor, and the
+  From cli-common v0.33.4, which a later medical-common release pins,
+  `--json` prints it as `error.reason`, with the remedy apart as
+  `error.remedy`. Its message names the vendor, and the
   registration where it has a name. Its remedy names the guide (`doc`),
   that registration's `command` and its `store` command. Neither names a
   client id.
@@ -1197,7 +1200,8 @@ walks through the vendor's portal, and the CLI prints the values.
   registrant's alone (athenahealth's "Keys"), and `info` output gets
   pasted into bug reports. To tell whether a client is kept in the vault
   without reading the keychain, which `info` must never do, use
-  `pk_cli_auth::vault::Vault::contains` (cli-common v0.33.3).
+  `pk_cli_auth::vault::Vault::contains`. It comes in cli-common v0.33.3,
+  once a later medical-common release pins it; v0.6.9 pins v0.33.2.
 
   `clients` is medical-common's member of two cli-common schemas, and
   cli-common's DESIGN does not define it. Readers that predate it ignore

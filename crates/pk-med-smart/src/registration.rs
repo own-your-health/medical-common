@@ -6,7 +6,7 @@
 //! its app: the portal, the guide, the launch and client type, PKCE, the
 //! redirect URIs, the scopes, and every other field the form asks for. A CLI
 //! with a sandbox and a production registration builds one of each. It
-//! renders as text ([`Registration::text`]) and as `registration/v1` JSON
+//! renders as text ([`Registration::text`]) and as `registration/v2` JSON
 //! (serde). [`missing_client`] is the error a command gives when nothing is
 //! configured to sign in with. [`ClientStatus`] says whether one is, per
 //! registration: the `clients` member that `info` and `auth status` add
@@ -21,8 +21,9 @@ use serde_json::Value;
 
 use crate::scopes::ScopeSet;
 
-/// The `schema` of a [`Registration`].
-pub const SCHEMA: &str = "registration/v1";
+/// The `schema` of a [`Registration`]. v1 was v0.6.8's shape: one
+/// registration a CLI, and `doc` a repository path.
+pub const SCHEMA: &str = "registration/v2";
 
 /// Why a command could not sign in: no client is configured
 /// ([`missing_client`]). Compare a [`CliError`]'s reason with it; `--json`
@@ -85,7 +86,7 @@ pub struct Selection {
 }
 
 /// What to enter in a vendor's developer form for one registration of the
-/// CLI (`registration/v1`). Build it with [`Registration::new`] and its
+/// CLI (`registration/v2`). Build it with [`Registration::new`] and its
 /// builder methods: it is `#[non_exhaustive]`, so a member a later release
 /// adds comes with a default.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -141,6 +142,10 @@ impl Registration {
     /// command that stores the result; it names placeholders
     /// (`<CLIENT_ID>`), never a value. The command that prints it is
     /// `<cli> registration` until [`Self::command`] says otherwise.
+    ///
+    /// A `doc` that is not an `https` URL with a host panics in a debug
+    /// build, so a CLI's tests catch a repository path left over from
+    /// v0.6.8: it would send someone with a release binary nowhere.
     pub fn new(
         cli: impl Into<String>,
         vendor: impl Into<String>,
@@ -150,6 +155,11 @@ impl Registration {
         store: impl Into<String>,
     ) -> Self {
         let cli = cli.into();
+        let doc = doc.into();
+        debug_assert!(
+            is_https_url(&doc),
+            "Registration::new: `doc` must be the guide's absolute https URL, not {doc:?}"
+        );
         Registration {
             schema: SCHEMA.into(),
             command: format!("{cli} registration"),
@@ -157,7 +167,7 @@ impl Registration {
             vendor: vendor.into(),
             registration: None,
             portal: portal.into(),
-            doc: doc.into(),
+            doc,
             launch: LaunchType::StandalonePatient,
             client_type,
             pkce: Pkce::S256,
@@ -364,6 +374,14 @@ impl Selection {
             note,
         }
     }
+}
+
+/// `https://` and a host: the scheme in any case, as RFC 3986 allows.
+fn is_https_url(doc: &str) -> bool {
+    doc.get(..8)
+        .is_some_and(|scheme| scheme.eq_ignore_ascii_case("https://"))
+        && !doc[8..].is_empty()
+        && !doc[8..].starts_with(['/', '?', '#'])
 }
 
 fn write_values(out: &mut String, label: &str, values: &[String], width: usize) {
