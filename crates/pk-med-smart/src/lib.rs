@@ -19,9 +19,9 @@
 //!    ([`JwtSigner`]; feature `rsa` adds an RS384 key, `RsaKey`).
 //!
 //! A CLI's `registration` command prints a [`Registration`], what to enter
-//! in the vendor's developer form; a command with no client configured fails
-//! with [`missing_client`]; `info` and `auth status` add a [`ClientStatus`]
-//! ([`with_client`]).
+//! in the vendor's developer form, one per registration; a command with no
+//! client configured fails with [`missing_client`]; `info` and `auth status`
+//! add a [`ClientStatus`] per registration ([`with_clients`]).
 //!
 //! What a vendor does differently goes in a [`VendorQuirks`]. Tokens never
 //! appear in `Debug` output or messages. What to do after an error is its
@@ -55,7 +55,7 @@ pub use profiles::{migrate_sessions, ProfileSessions};
 pub use quirks::{NoQuirks, VendorQuirks};
 pub use register::{jwt_bearer_tokens, register_dynamic_client};
 pub use registration::{
-    missing_client, with_client, ClientStatus, ClientType, Registration, StoredIn,
+    missing_client, with_clients, ClientStatus, ClientType, Registration, StoredIn,
 };
 pub use renew::{Renewer, SignerFor};
 #[cfg(feature = "rsa")]

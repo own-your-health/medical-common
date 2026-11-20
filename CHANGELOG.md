@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.6.9 — 2026-11-20
+
+Pins cli-common v0.33.2, as v0.6.8 does.
+
+Breaking, in v0.6.8's `pk_med_smart::registration`. It changes after
+mychart, athena, kp and modmed adopted it, from their notes. Three of the
+four have two registrations.
+
+- One `Registration` per registration.
+  - `Registration::registration("sandbox")` names it, and
+    `Registration::command(...)` is the command that prints it (default
+    `<bin> registration`).
+  - `missing_client(&reg)` drops its `which` argument. Its remedy names
+    that registration's command: "register one by following <doc>,
+    entering what `<command>` prints, then run `<store>`".
+- `doc` is the guide's absolute `https` URL, for someone with a release
+  binary and no repository.
+- `with_clients(&dto, &[ClientStatus])` adds `clients`, one entry per
+  registration. It replaces `with_client` and `client`, and refuses an
+  empty list or several entries that do not each name a registration of
+  their own.
+- `ClientStatus::of(&reg, stored_in)` builds an entry. `text` names the
+  registration whether or not it is configured.
+- `ClientStatus.client_id` is gone. `client_id_last_four(id)` sets
+  `client_id_ends_with`, and only for an id of 12 or more characters. A
+  vendor's terms may keep the id the registrant's alone, and `info` output
+  gets pasted into bug reports.
+- `NO_CLIENT` is `Reason::Provider("no_client")`, in the family's
+  `snake_case`. cli-common v0.33.4 prints it in `--json` as `error.reason`.
+
+Added:
+- `Registration::selections` (`selection`, `selection_with_note`), for a
+  list the form asks the registrant to pick from, such as Epic's APIs.
+- `Registration::url_with_note`.
+
 ## v0.6.8 — 2026-11-20
 
 Pins cli-common v0.33.2, as v0.6.7 does.
