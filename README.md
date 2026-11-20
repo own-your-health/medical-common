@@ -28,7 +28,7 @@ pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.
 pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }
 pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }
 # The same cli-common tag medical-common pins (DESIGN.md §5):
-pk-cli-core = { git = "https://github.com/piekstra/cli-common", tag = "v0.33.2" }
+pk-cli-core = { git = "https://github.com/piekstra/cli-common", tag = "v0.33.4" }
 
 [dev-dependencies]
 pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9", features = ["test-util"] }

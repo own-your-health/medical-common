@@ -2,7 +2,13 @@
 
 ## v0.6.9 — 2026-11-20
 
-Pins cli-common v0.33.2, as v0.6.8 does.
+Pins cli-common v0.33.4 (v0.6.8 pinned v0.33.2). Both cli-common releases
+are additive:
+- v0.33.3 adds `Vault::contains`, which DESIGN §3.8 names for a vault
+  check that reads no keychain;
+- v0.33.4 adds `error.reason` and `error.remedy` to the `--json` error.
+
+A CLI that takes v0.6.9 moves every `pk-cli-*` to v0.33.4 with it.
 
 Breaking, in v0.6.8's `pk_med_smart::registration`. It changes after
 mychart, athena, kp and modmed adopted it, from their notes. Three of the
@@ -33,11 +39,6 @@ four have two registrations.
   gets pasted into bug reports.
 - `NO_CLIENT` is `Reason::Provider("no_client")`, in the family's
   `snake_case`. cli-common v0.33.4 prints it in `--json` as `error.reason`.
-
-Not in this release's pin (cli-common v0.33.2), and coming with a later
-one: `Vault::contains` (cli-common v0.33.3), which DESIGN §3.8 names for
-a vault check that reads no keychain, and `error.reason` and
-`error.remedy` in `--json` (cli-common v0.33.4).
 
 Added:
 - `Registration::selections` (`selection`, `selection_with_note`), for a

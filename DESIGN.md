@@ -29,7 +29,7 @@ versions with other content by the later read over the same route
 own name for one member, and its `patient-labels` capability (§1); v0.6.8
 adds `registration`, what to enter in a vendor's developer form, the
 missing-client error and the client status, one per registration from
-v0.6.9 (§3.8). §3.6 says why no
+v0.6.9, which moves to cli-common v0.33.4 (§3.8). §3.6 says why no
 portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
@@ -1168,9 +1168,8 @@ walks through the vendor's portal, and the CLI prints the values.
 - A command that needs a client and finds none fails with
   `pk_med_smart::missing_client(&registration)`. The error is exit 2 with
   the reason `registration::NO_CLIENT` (`Reason::Provider("no_client")`).
-  From cli-common v0.33.4, which a later medical-common release pins,
-  `--json` prints it as `error.reason`, with the remedy apart as
-  `error.remedy`. Its message names the vendor, and the
+  From cli-common v0.33.4, which v0.6.9 pins, `--json` prints it as
+  `error.reason`, with the remedy apart as `error.remedy`. Its message names the vendor, and the
   registration where it has a name. Its remedy names the guide (`doc`),
   that registration's `command` and its `store` command. Neither names a
   client id.
@@ -1200,8 +1199,8 @@ walks through the vendor's portal, and the CLI prints the values.
   registrant's alone (athenahealth's "Keys"), and `info` output gets
   pasted into bug reports. To tell whether a client is kept in the vault
   without reading the keychain, which `info` must never do, use
-  `pk_cli_auth::vault::Vault::contains`. It comes in cli-common v0.33.3,
-  once a later medical-common release pins it; v0.6.9 pins v0.33.2.
+  `pk_cli_auth::vault::Vault::contains` (cli-common v0.33.3, in v0.6.9's
+  pin).
 
   `clients` is medical-common's member of two cli-common schemas, and
   cli-common's DESIGN does not define it. Readers that predate it ignore
@@ -1431,4 +1430,4 @@ does not convert to the other.
 | v0.6.6 | v0.33.2 |
 | v0.6.7 | v0.33.2 |
 | v0.6.8 | v0.33.2 |
-| v0.6.9 | v0.33.2 |
+| v0.6.9 | v0.33.4 |
