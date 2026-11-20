@@ -28,7 +28,8 @@ versions with other content by the later read over the same route
 (`version::decide`, §1.4); v0.6.7 names `patients label`, the household's
 own name for one member, and its `patient-labels` capability (§1); v0.6.8
 adds `registration`, what to enter in a vendor's developer form, the
-missing-client error and the `client` status (§3.8). §3.6 says why no
+missing-client error and the client status, one per registration from
+v0.6.9, which moves to cli-common v0.33.4 (§3.8). §3.6 says why no
 portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
@@ -1135,16 +1136,24 @@ walks through the vendor's portal, and the CLI prints the values.
   developer form. It takes no `--profile`, reads no secret and makes no
   request. Its values are the CLI's own, with placeholders such as
   `<CLIENT_ID>` and never a household's client id.
-  `pk_med_smart::Registration` is the description, `Registration::text` is
-  the human form, and its JSON is `registration/v1`:
+  - A CLI with more than one registration (sandbox and production, preview
+    and production) builds one `Registration` per registration. It prints
+    one, chosen by a flag of its own (`--sandbox`, `--env preview`), and
+    each names that command in `command`.
+  - `pk_med_smart::Registration` is the description, and
+    `Registration::text` is the human form. Its JSON is `registration/v2`.
+    v0.6.8 printed `registration/v1`, with one registration a CLI and
+    `doc` a repository path:
 
   | Field | | |
   |---|---|---|
-  | `schema` | required | `registration/v1` |
+  | `schema` | required | `registration/v2` |
   | `cli` | required | the binary |
   | `vendor` | required | who registers the app (`Epic on FHIR`, `athenahealth`) |
+  | `registration` | optional | which one (`sandbox`), for a CLI with more than one |
   | `portal` | required | the developer portal's URL, where the form is |
-  | `doc` | required | the guide's path in the repository (`docs/registration.md`) |
+  | `doc` | required | the guide's absolute `https` URL, so that someone with a release binary and no repository can open it; `Registration::new` panics in a debug build on anything else, so a CLI's tests catch it |
+  | `command` | required | the command that prints this registration (`<bin> registration`, `<bin> registration --sandbox`) |
   | `launch` | required | `standalone-patient` |
   | `client_type` | required | `public`, `confidential-symmetric` or `confidential-asymmetric`, in SMART's terms |
   | `pkce` | required | `S256` |
@@ -1152,32 +1161,57 @@ walks through the vendor's portal, and the CLI prints the values.
   | `scopes` | required | every scope the CLI asks for |
   | `urls` | optional | `[{label, value, note?}]`: the URLs the form asks for, in its order |
   | `fields` | optional | `[{label, value, note?}]`: every other field, in the form's order, under the label the portal prints |
+  | `selections` | optional | `[{label, items, note?}]`: each list the form asks the registrant to pick from (Epic's APIs), and the items to pick, as the portal names them |
   | `store` | required | the command that stores what the portal gives back (`<bin> config set client-id <CLIENT_ID>`) |
   | `notes` | optional | one sentence each: what the portal refuses and the way around it, review times |
 
 - A command that needs a client and finds none fails with
-  `pk_med_smart::missing_client`. The error is exit 2 with the reason
-  `registration::NO_CLIENT` (`Reason::Provider("no-client")`). Its message
-  names the vendor, and the registration for a CLI with more than one
-  (`sandbox`). Its remedy names the guide, `<bin> registration` and the
-  store command. Neither names a client id.
-- `info --json` and `auth status --json` add a `client` member
-  (`pk_med_smart::ClientStatus`, by `pk_med_smart::with_client`). It holds:
+  `pk_med_smart::missing_client(&registration)`. The error is exit 2 with
+  the reason `registration::NO_CLIENT` (`Reason::Provider("no_client")`).
+  From cli-common v0.33.4, which v0.6.9 pins, `--json` prints it as
+  `error.reason`, with the remedy apart as `error.remedy`. Its message names the vendor, and the
+  registration where it has a name. Its remedy names the guide (`doc`),
+  that registration's `command` and its `store` command. Neither names a
+  client id.
+- `info --json` and `auth status --json` add a `clients` member, by
+  `pk_med_smart::with_clients`. It holds one `pk_med_smart::ClientStatus`
+  per registration the CLI has, and each holds:
+  - `registration`: required when there is more than one entry, and
+    unique;
   - `configured`;
   - when configured, `client_type` and `stored_in` (`config` or `vault`,
     `pk_med_smart::StoredIn`);
-  - `registration`, for a CLI with more than one;
-  - `client_id`, only for a CLI that keeps it in its config.
+  - `client_id_ends_with`, the id's last four characters, only for a CLI
+    that reads the id without a secret, and only for an id of 12 or more
+    characters.
 
-  Readers that predate `client` ignore it. The human output of both
-  commands adds the line `ClientStatus::text` writes.
+  `ClientStatus::of(&registration, stored_in)` builds the entry from the
+  `Registration`. The human output of both commands adds one line per
+  entry, the one `ClientStatus::text` writes, with the registration in
+  each line. For example:
 
-  `client` is medical-common's member of two cli-common schemas, and
-  cli-common's DESIGN does not define it. So `with_client` refuses a DTO
-  that already has a `client` member (exit 1) rather than replace it. A
-  cli-common release that adds one of its own then fails a CLI's `info
-  --json` test, and the two are reconciled there. piekstra/cli-common#89
-  proposes that cli-common own the member.
+  ```
+  client (production): confidential (secret), in vault
+  client (sandbox): none configured; see <doc> and `<bin> registration --sandbox`
+  ```
+
+  The id is never shown whole. A vendor's terms may keep it the
+  registrant's alone (athenahealth's "Keys"), and `info` output gets
+  pasted into bug reports. To tell whether a client is kept in the vault
+  without reading the keychain, which `info` must never do, use
+  `pk_cli_auth::vault::Vault::contains` (cli-common v0.33.3, in v0.6.9's
+  pin).
+
+  `clients` is medical-common's member of two cli-common schemas, and
+  cli-common's DESIGN does not define it. Readers that predate it ignore
+  it. `with_clients` refuses (exit 1):
+  - a DTO that already has a `clients` member, rather than replace it;
+  - no entries;
+  - several entries that do not each name a registration of their own.
+
+  So a cli-common release that adds a member of its own fails a CLI's
+  `info --json` test, and the two are reconciled there.
+  piekstra/cli-common#89 proposes that cli-common own the member.
 - `info --json` lists `"registration"` (`pk_med_records::REGISTRATION`) in
   `cli-info/v1`'s `capabilities` once the command exists.
 - A CLI that registers clients dynamically (Epic, §3.4) prints the values
@@ -1360,10 +1394,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.8" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.8" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.8" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.8" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1396,3 +1430,4 @@ does not convert to the other.
 | v0.6.6 | v0.33.2 |
 | v0.6.7 | v0.33.2 |
 | v0.6.8 | v0.33.2 |
+| v0.6.9 | v0.33.4 |
