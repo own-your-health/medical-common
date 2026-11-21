@@ -88,12 +88,13 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
     matches no member of the profile is exit 4.
   - A label is unique within the profile and never equal to a member's
     `id`, so `--patient` is never ambiguous; either collision is exit 2.
-    A member stays one, label and all, when a later read of the source
-    leaves them out, since that read may only have come back short. So a
-    label such a member holds is still a collision, and its remedy is to
-    clear it first (`--patient <LABEL> --clear`), never to move it.
     So is a `<WHO>` that is empty or only whitespace, and `<WHO>` given
     with `--clear`, or neither given.
+  - A member stays one, label and all, when a later read of the source
+    leaves them out, since that read may only have come back short. So a
+    label such a member holds is still a collision (exit 2), and its
+    remedy is to clear it first (`--patient <LABEL> --clear`), never to
+    move it.
   - Setting the label a member already has, or clearing one that is not
     set, succeeds and changes nothing.
   - On success, `--json` prints `patient-list/v1` holding that one member.
