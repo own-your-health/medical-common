@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- DESIGN.md §1: `--patient` never matches a name the source shows, a
+  first name included. A name on the command line stays in shell history
+  and in an agent's transcript (from the uhc-cli and caremark-cli
+  sessions).
+- DESIGN.md §1: a member a later read of the source leaves out stays a
+  member, label and all. Giving their label to someone else is exit 2,
+  with a remedy that clears it first, never a silent move (from the
+  caremark-cli session).
+
 ## v0.6.10 — 2026-11-21
 
 Pins cli-common v0.33.5 (v0.6.9 pinned v0.33.4). No API change here.

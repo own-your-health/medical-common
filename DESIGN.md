@@ -74,7 +74,10 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 
 - `orgs search` matches `name`, `aliases` and `location`, case-insensitive.
 - `--patient` takes a `PatientContext.id`, or its `label`. With one
-  context signed in, it may be omitted.
+  context signed in, it may be omitted. It never matches a name the source
+  shows (`PatientContext.name`, a first name included): a name on the
+  command line stays in shell history and in the transcript of any agent
+  that runs the command, and the label exists to stand in for it.
 - `patients label` sets the household's own name for one member of a
   profile, in that member's grant (below), replacing any label it had.
   `--clear` removes it. It is how a member gets a label when one sign-in
@@ -87,6 +90,11 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
     `id`, so `--patient` is never ambiguous; either collision is exit 2.
     So is a `<WHO>` that is empty or only whitespace, and `<WHO>` given
     with `--clear`, or neither given.
+  - A member stays one, label and all, when a later read of the source
+    leaves them out, since that read may only have come back short. So a
+    label such a member holds is still a collision (exit 2), and its
+    remedy is to clear it first (`--patient <LABEL> --clear`), never to
+    move it.
   - Setting the label a member already has, or clearing one that is not
     set, succeeds and changes nothing.
   - On success, `--json` prints `patient-list/v1` holding that one member.
