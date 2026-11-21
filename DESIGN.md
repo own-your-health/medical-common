@@ -29,7 +29,8 @@ versions with other content by the later read over the same route
 own name for one member, and its `patient-labels` capability (§1); v0.6.8
 adds `registration`, what to enter in a vendor's developer form, the
 missing-client error and the client status, one per registration from
-v0.6.9, which moves to cli-common v0.33.4 (§3.8). §3.6 says why no
+v0.6.9, which moves to cli-common v0.33.4 (§3.8); v0.6.10 moves to
+cli-common v0.33.5 (§5). §3.6 says why no
 portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
@@ -1394,10 +1395,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.9" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.10" }
+pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.10" }
+pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.10" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.10" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1431,3 +1432,4 @@ does not convert to the other.
 | v0.6.7 | v0.33.2 |
 | v0.6.8 | v0.33.2 |
 | v0.6.9 | v0.33.4 |
+| v0.6.10 | v0.33.5 |

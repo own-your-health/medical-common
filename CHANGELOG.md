@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.6.10 — 2026-11-21
+
+Pins cli-common v0.33.5 (v0.6.9 pinned v0.33.4). No API change here.
+v0.33.5 is additive: `pk-cli-browser` gains `Capture::responses`, which
+keeps the bodies the owner's own pages load, and `finish()`, which ends a
+watch window when the owner is done. athena-cli needs both, and keeps
+every `pk-cli-*` on medical-common's cli-common tag (DESIGN §5).
+
+A CLI that takes v0.6.10 moves every `pk-cli-*` to v0.33.5 with it.
+
 ## v0.6.9 — 2026-11-20
 
 Pins cli-common v0.33.4 (v0.6.8 pinned v0.33.2). Both cli-common releases
