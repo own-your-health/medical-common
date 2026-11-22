@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The repository moved to `github.com/own-your-health/medical-common`,
+  tags and all. `Cargo.toml`'s `repository` and `homepage`, and every
+  example in README and DESIGN §5, name the new URL. DESIGN §5: a CLI
+  moves every `pk-med-*` to it in one change, with the tag it already
+  pins, since Cargo takes the old and new URLs for two sources. Nothing
+  built from these crates names the owner, so no release.
 - DESIGN.md §1: `--patient` never matches a name the source shows, a
   first name included. A name on the command line stays in shell history
   and in an agent's transcript (from the uhc-cli and caremark-cli
