@@ -56,8 +56,37 @@ fn is_dummy_number(n: &str) -> bool {
         || n.starts_with("1555")
 }
 
+/// `line` with each run of 32 or more lowercase hex digits that holds a
+/// letter replaced by `#`: a digest (a pinned checksum, a commit), whose
+/// digit runs are no one's number. A run of digits alone stays, and so does
+/// a shorter run such as `bad1234567`. `#` is no separator the compact scan
+/// drops, so the digits on either side never join.
+fn without_digests(line: &str) -> String {
+    fn flush(run: &mut String, out: &mut String) {
+        if run.len() >= 32 && run.chars().any(|c| c.is_ascii_lowercase()) {
+            out.push('#');
+        } else {
+            out.push_str(run);
+        }
+        run.clear();
+    }
+    let mut out = String::with_capacity(line.len());
+    let mut run = String::new();
+    for c in line.chars() {
+        if c.is_ascii_digit() || ('a'..='f').contains(&c) {
+            run.push(c);
+        } else {
+            flush(&mut run, &mut out);
+            out.push(c);
+        }
+    }
+    flush(&mut run, &mut out);
+    out
+}
+
 fn scan_line(line: &str) -> Vec<String> {
     let mut findings = Vec::new();
+    let line = &without_digests(line);
     let compact = line.replace(['(', ')', '-', '.', ' '], "");
     for n in digit_runs(line, 7).into_iter().chain(
         digit_runs(&compact, 10)
@@ -151,6 +180,21 @@ fn the_scanner_finds_the_shapes() {
             "address-like",
         ),
         (format!(r#""birthDate": "{}-07-12""#, 1984), "birth date"),
+        // Hex with a letter, but too short for a digest.
+        (format!("bad{}", 1234567), "number"),
+        // Digest length, but digits alone.
+        ("12345678".repeat(4), "number"),
+        // A digest beside a number keeps the number.
+        (
+            format!(
+                "{} {}-{}-{}",
+                "0123456789abcdef".repeat(4),
+                "312",
+                "867",
+                "5309"
+            ),
+            "number",
+        ),
     ];
     for (line, kind) in &positives {
         assert!(
@@ -159,6 +203,7 @@ fn the_scanner_finds_the_shapes() {
             scan_line(line)
         );
     }
+    let digest = "0123456789abcdef".repeat(4);
     for line in [
         "phone 555-0100",
         "MRN-0000001",
@@ -167,6 +212,8 @@ fn the_scanner_finds_the_shapes() {
         "1 Example St",
         r#""birthDate": "1970-01-01""#,
         "NPI 0000000001",
+        &format!("SHA256: {digest}"),
+        &format!("commit {}", &digest[..40]),
     ] {
         assert!(scan_line(line).is_empty(), "{line}: {:?}", scan_line(line));
     }
