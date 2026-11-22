@@ -1,0 +1,41 @@
+{
+  "resourceType": "Invoice",
+  "id": "bill-0000001",
+  "contained": [
+    {
+      "resourceType": "ChargeItem",
+      "id": "charge-1",
+      "status": "billable",
+      "code": {"text": "Synthetic office visit"},
+      "subject": {"reference": "Patient/example", "display": "Robin Testperson"},
+      "occurrenceDateTime": "2020-03-04"
+    }
+  ],
+  "identifier": [{"system": "urn:examplebill:account-0000:bill", "value": "0000001"}],
+  "status": "issued",
+  "subject": {"reference": "Patient/example", "display": "Robin Testperson"},
+  "date": "2020-03-18",
+  "lineItem": [
+    {
+      "sequence": 1,
+      "chargeItemReference": {"reference": "#charge-1"},
+      "priceComponent": [
+        {"type": "base", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "billed", "display": "Billed charge"}]}, "amount": {"value": 250.00, "currency": "USD"}},
+        {"type": "informational", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "allowed", "display": "Allowed amount"}]}, "amount": {"value": 180.00, "currency": "USD"}},
+        {"type": "deduction", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "insurance-payment", "display": "Insurance payment"}]}, "amount": {"value": 140.00, "currency": "USD"}},
+        {"type": "discount", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "insurance-adjustment", "display": "Insurance adjustment"}]}, "amount": {"value": 70.00, "currency": "USD"}},
+        {"type": "deduction", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "patient-payment", "display": "Patient payment"}]}, "amount": {"value": 20.00, "currency": "USD"}},
+        {"type": "informational", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "patient-responsibility", "display": "Patient responsibility"}]}, "amount": {"value": 20.00, "currency": "USD"}}
+      ]
+    }
+  ],
+  "totalPriceComponent": [
+    {"type": "base", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "billed", "display": "Billed charge"}]}, "amount": {"value": 250.00, "currency": "USD"}},
+    {"type": "deduction", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "insurance-payment", "display": "Insurance payment"}]}, "amount": {"value": 140.00, "currency": "USD"}},
+    {"type": "discount", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "insurance-adjustment", "display": "Insurance adjustment"}]}, "amount": {"value": 70.00, "currency": "USD"}},
+    {"type": "deduction", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "patient-payment", "display": "Patient payment"}]}, "amount": {"value": 20.00, "currency": "USD"}},
+    {"type": "informational", "code": {"coding": [{"system": "urn:pk-med:bill-component", "code": "patient-responsibility", "display": "Patient responsibility"}]}, "amount": {"value": 20.00, "currency": "USD"}}
+  ],
+  "totalNet": {"value": 20.00, "currency": "USD"},
+  "totalGross": {"value": 20.00, "currency": "USD"}
+}

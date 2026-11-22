@@ -30,8 +30,8 @@ own name for one member, and its `patient-labels` capability (§1); v0.6.8
 adds `registration`, what to enter in a vendor's developer form, the
 missing-client error and the client status, one per registration from
 v0.6.9, which moves to cli-common v0.33.4 (§3.8); v0.6.10 moves to
-cli-common v0.33.5 (§5). §3.6 says why no
-portal sign-in is scripted.
+cli-common v0.33.5 (§5); v0.6.11 maps a provider's bills and names their
+code systems (`bill`, §1.10). §3.6 says why no portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -42,9 +42,10 @@ piekstra-cli/1 holds.
 
 ## 1. The `health-records/v1` profile (crate `pk-med-records`)
 
-For any CLI that reads a person's health records from a provider, or their
-coverage and claims from an insurer: `mychart` (Epic), `athena`
-(athenahealth), `uhc` (UnitedHealthcare), and the CLIs after them. The
+For any CLI that reads a person's health records from a provider, their
+coverage and claims from an insurer, or their bills from a provider's
+billing site: `mychart` (Epic), `athena` (athenahealth), `uhc`
+(UnitedHealthcare), `peryourhealth`, and the CLIs after them. The
 records store (`medrec`) is the consumer. Every command is a read, so the
 confirmation rules of piekstra-cli/1 §1.3 do not apply. A CLI declares the
 profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
@@ -122,6 +123,9 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
   (CARIN Blue Button). A CLI whose source is not a FHIR server (a member
   site, downloaded files) maps what it reads into those FHIR shapes and sets
   the header's `method` to `portal`, so the store sees one format.
+- A billing CLI's export carries a provider's bills as §1.10 maps them:
+  `Account`, `Invoice`, `PaymentReconciliation`, and `DocumentReference`
+  with `Binary` for statements and receipts.
 - `--ndjson` and `-o` are exclusive; one of them is required. `--json` with
   `--ndjson` is a usage error (exit 2): the stream is the output.
 - `auth status` reports `method: "browser-session"` for a SMART sign-in
@@ -614,6 +618,88 @@ added within `/v1` does not break a caller.
 The header's `method` and `since_unbounded` are such fields: optional,
 omitted when absent or empty, and ignored by a reader that predates them,
 so `records-stream/v1` holds with or without them.
+
+### 1.10 Bills
+
+A CLI that maps a provider's billing site (`peryourhealth`, `flywire`,
+`embryooptions`) writes what the site shows as FHIR R4 in the records
+stream. The header's `method` is `portal`. Every resource carries
+`meta.source` `<bin>:site` and the mapped tag (§1.4), and its id derives
+from the site's own number for it, so a bill read twice is one resource.
+
+| What the site shows | FHIR R4 |
+|---|---|
+| The billing account | `Account`: `identifier` the site's account number, `subject` the Patient, `status` `active` or `inactive` |
+| A service billed (a visit, a claim at the provider) | `Invoice`: `identifier[]` the site's number for it first, and the insurer's claim number where the site shows one; `account` the Account; `status` below; the totals below |
+| A charge on it | a `ChargeItem` contained in the Invoice, named by `lineItem[].chargeItemReference` (`#charge-<n>`): `status` `billable`, `code` the CPT or HCPCS code where the site shows one (else the site's text), `subject` the Patient, `occurrenceDateTime` the date of service |
+| A payment the patient made | `PaymentReconciliation`: `paymentDate`, `paymentAmount`, `paymentIdentifier` the site's transaction number, `detail[].request` each Invoice it paid where the site says. An insurer's payment stays on the Invoice's lines |
+| A statement, a receipt | `DocumentReference` and its `Binary` (§1.4): `type` `{"coding": [{"system": "urn:pk-med:doc-type", "code": "bill"}], "text": "bill"}`, or `receipt`; a statement's `context.related` names the Account and the Invoices it lists |
+
+Each amount is a `Money` whose `value` is a JSON number in the site's own
+spelling (`125.00`, §1.4) and whose `currency` is `USD`.
+
+**Price components.** `lineItem[].priceComponent[]` breaks down each
+charge, and `totalPriceComponent[]` the bill, with the codes of
+`urn:pk-med:bill-component` under R4's component types:
+
+| `type` | `code` | Amount |
+|---|---|---|
+| `base` | `billed` | what the provider billed |
+| `informational` | `allowed` | what the insurer allows |
+| `deduction` | `insurance-payment` | what the insurer paid |
+| `discount` | `insurance-adjustment` | what the provider wrote off under the insurer's terms |
+| `deduction` | `patient-payment` | what the patient paid |
+| `informational` | `patient-responsibility` | what the patient still owes |
+
+The bill's components are the site's totals, else the sum of its lines'.
+A bill the site shows without lines is one line of its own. The
+components are the breakdown the site shows and need not add up: a bill
+still with the insurer shows what was billed and no payment yet.
+
+**Totals.** R4 defines `totalNet` as the invoice total with taxes
+excluded, and `totalGross` with them included. The Invoice is the
+patient's bill, so its total is what the patient still owes: the site's
+figure, else the sum of the lines' `patient-responsibility`. `totalGross`
+is the same amount, since a medical bill carries no tax. The billed amount
+is the `base` component, never a total.
+
+**Status.** An Invoice is `issued` while the patient owes on it,
+`balanced` at 0, and `cancelled` when the provider voids it.
+
+**Balance.** R4's `Account` has no balance. A store derives one as the sum
+of `totalNet` over the Account's Invoices that are `issued`. A site may
+stop listing a bill once it is paid or sent elsewhere, and then no later
+stream carries it as `balanced`. So a billing CLI writes every bill the
+site lists, with its Account, in a complete stream without `since`, and a
+bill it could not read is a `Skip` (§1.4). An Invoice is one the site no
+longer shows when a later stream leaves it out that:
+- is complete and has no `since`;
+- carries the Invoice's Account (its `account`), since two sign-ins can see
+  one patient through two accounts;
+- has no `Skip` for `Invoice` or `Account`, since a page that failed is a
+  skip in a stream that still completes.
+
+The store shows such an Invoice as last seen when the latest stream that
+carried it was pulled, and counts it in no balance.
+
+**Code systems.** This profile names its own code systems under
+`urn:pk-med:`, so no system URI depends on where a repository lives:
+
+| System | Codes |
+|---|---|
+| `urn:pk-med:bill-component` | `billed`, `allowed`, `insurance-payment`, `insurance-adjustment`, `patient-payment`, `patient-responsibility` |
+| `urn:pk-med:doc-type` | `bill` (a statement), `receipt` |
+
+A new code is added here first. A CLI's own systems for the site's numbers
+(an account or bill number) stay the CLI's.
+
+`pk_med_records::bill` holds both systems and their codes
+(`Component`, with its R4 type, and `DocType`). A producer builds with
+`Component::price_component`, `set_totals` and `DocType::concept`, and a
+store reads with `Component::amount_in` and `DocType::of`, so no CLI spells
+a code of its own. Amounts are `serde_json::Number`s the caller builds: a
+producer keeps the site's spelling with serde_json's `arbitrary_precision`,
+and the module never parses or reformats one.
 
 ## 2. FHIR types and client (crate `pk-med-fhir`)
 
@@ -1403,10 +1489,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }
-pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }
-pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }
+pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }
+pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1450,3 +1536,4 @@ new URL in one change, with the tag it already pins, a regenerated
 | v0.6.8 | v0.33.2 |
 | v0.6.9 | v0.33.4 |
 | v0.6.10 | v0.33.5 |
+| v0.6.11 | v0.33.5 |

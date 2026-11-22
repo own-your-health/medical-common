@@ -2,6 +2,8 @@
 //! family emits, and what the records store reads. `DESIGN.md` at the
 //! repository's root is the specification; this crate is its types.
 //!
+//! - [`bill`]: a provider's bills (§1.10): the code systems this profile
+//!   owns, [`bill::Component`] and the builders of an Invoice's amounts.
 //! - [`dto`]: [`Organization`] (`org-list/v1`), [`PatientContext`]
 //!   (`patient-list/v1`), [`Provenance`] (`provenance/v1`) and
 //!   [`RecordsExport`] (`records-export/v1`).
@@ -16,6 +18,7 @@
 //! Resources travel as [`RawResource`]: the server's own JSON text, so a
 //! decimal keeps its spelling from source to store.
 
+pub mod bill;
 pub mod dto;
 pub mod export;
 pub mod stream;
