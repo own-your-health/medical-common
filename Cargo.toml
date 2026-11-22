@@ -7,8 +7,8 @@ version = "0.6.10"
 edition = "2021"
 rust-version = "1.89"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/piekstra/medical-common"
-homepage = "https://github.com/piekstra/medical-common"
+repository = "https://github.com/own-your-health/medical-common"
+homepage = "https://github.com/own-your-health/medical-common"
 authors = ["piekstra"]
 
 [workspace.dependencies]

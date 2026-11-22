@@ -1403,16 +1403,25 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.10" }
-pk-med-fhir = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.10" }
-pk-med-smart = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.10" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/piekstra/medical-common", tag = "v0.6.10" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }
+pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }
+pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
 and a consumer pins the same cli-common tag: two cli-common tags in one
 build are two copies of every `pk-cli-core` type, and `CliError` from one
 does not convert to the other.
+
+The repository is `github.com/own-your-health/medical-common`, where every
+tag is. GitHub redirects the old `github.com/piekstra/medical-common`, so a
+pin on it still builds. Cargo takes the two URLs for two sources, though: a
+build that names medical-common by both has two copies of every `pk-med-*`
+type, as with two cli-common tags. A consumer moves every `pk-med-*` to the
+new URL in one change, with the tag it already pins, a regenerated
+`Cargo.lock` and its `cargo-deny` `allow-git` entry. cli-common stays at
+`github.com/piekstra/cli-common`.
 
 | medical-common | cli-common |
 |---|---|
