@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- DESIGN.md §1.10: a provider's bills from its billing site, as
+  peryourhealth, flywire and embryooptions map them (from the billing-cli
+  session, accepted by medrec-cli). `Account`, `Invoice` with contained
+  `ChargeItem` lines, `PaymentReconciliation`, and `DocumentReference` with
+  `Binary` for statements and receipts. Two code systems this profile owns:
+  `urn:pk-med:bill-component` and `urn:pk-med:doc-type`. `totalNet` and
+  `totalGross` are R4's totals after deductions, both what the patient
+  still owes. The billed amount is the `base` component.
 - The repository moved to `github.com/own-your-health/medical-common`,
   tags and all. `Cargo.toml`'s `repository` and `homepage`, and every
   example in README and DESIGN §5, name the new URL. DESIGN §5: a CLI

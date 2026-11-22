@@ -42,9 +42,10 @@ piekstra-cli/1 holds.
 
 ## 1. The `health-records/v1` profile (crate `pk-med-records`)
 
-For any CLI that reads a person's health records from a provider, or their
-coverage and claims from an insurer: `mychart` (Epic), `athena`
-(athenahealth), `uhc` (UnitedHealthcare), and the CLIs after them. The
+For any CLI that reads a person's health records from a provider, their
+coverage and claims from an insurer, or their bills from a provider's
+billing site: `mychart` (Epic), `athena` (athenahealth), `uhc`
+(UnitedHealthcare), `peryourhealth`, and the CLIs after them. The
 records store (`medrec`) is the consumer. Every command is a read, so the
 confirmation rules of piekstra-cli/1 §1.3 do not apply. A CLI declares the
 profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
@@ -122,6 +123,9 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
   (CARIN Blue Button). A CLI whose source is not a FHIR server (a member
   site, downloaded files) maps what it reads into those FHIR shapes and sets
   the header's `method` to `portal`, so the store sees one format.
+- A billing CLI's export carries a provider's bills as §1.10 maps them:
+  `Account`, `Invoice`, `PaymentReconciliation`, and `DocumentReference`
+  with `Binary` for statements and receipts.
 - `--ndjson` and `-o` are exclusive; one of them is required. `--json` with
   `--ndjson` is a usage error (exit 2): the stream is the output.
 - `auth status` reports `method: "browser-session"` for a SMART sign-in
@@ -614,6 +618,64 @@ added within `/v1` does not break a caller.
 The header's `method` and `since_unbounded` are such fields: optional,
 omitted when absent or empty, and ignored by a reader that predates them,
 so `records-stream/v1` holds with or without them.
+
+### 1.10 Bills
+
+A CLI that maps a provider's billing site (`peryourhealth`, `flywire`,
+`embryooptions`) writes what the site shows as FHIR R4 in the records
+stream. The header's `method` is `portal`. Every resource carries
+`meta.source` `<bin>:site` and the mapped tag (§1.4), and its id derives
+from the site's own number for it, so a bill read twice is one resource.
+
+| What the site shows | FHIR R4 |
+|---|---|
+| The billing account | `Account`: `identifier` the site's account number, `subject` the Patient, `status` `active` or `inactive` |
+| A service billed (a visit, a claim at the provider) | `Invoice`: `identifier[]` the site's number for it first, and the insurer's claim number where the site shows one; `account` the Account; `status` below; the totals below |
+| A charge on it | a `ChargeItem` contained in the Invoice, named by `lineItem[].chargeItemReference` (`#charge-<n>`): `status` `billable`, `code` the CPT or HCPCS code where the site shows one (else the site's text), `subject` the Patient, `occurrenceDateTime` the date of service |
+| A payment the patient made | `PaymentReconciliation`: `paymentDate`, `paymentAmount`, `paymentIdentifier` the site's transaction number, `detail[].request` each Invoice it paid where the site says. An insurer's payment stays on the Invoice's lines |
+| A statement, a receipt | `DocumentReference` and its `Binary` (§1.4): `type` `{"coding": [{"system": "urn:pk-med:doc-type", "code": "bill"}], "text": "bill"}`, or `receipt`; a statement's `context.related` names the Account and the Invoices it lists |
+
+Each amount is a `Money` whose `value` is a JSON number in the site's own
+spelling (`125.00`, §1.4) and whose `currency` is `USD`.
+
+**Price components.** `lineItem[].priceComponent[]` breaks down each
+charge, and `totalPriceComponent[]` the bill, with the codes of
+`urn:pk-med:bill-component` under R4's component types:
+
+| `type` | `code` | Amount |
+|---|---|---|
+| `base` | `billed` | what the provider billed |
+| `informational` | `allowed` | what the insurer allows |
+| `deduction` | `insurance-payment` | what the insurer paid |
+| `discount` | `insurance-adjustment` | what the provider wrote off under the insurer's terms |
+| `deduction` | `patient-payment` | what the patient paid |
+| `informational` | `patient-responsibility` | what the patient still owes |
+
+The bill's components are the site's totals, else the sum of its lines'.
+A bill the site shows without lines is one line of its own.
+
+**Totals.** R4 defines `totalNet` as the invoice total with taxes
+excluded, and `totalGross` with them included. Both are counted after the
+components: `base` less every `deduction` and `discount`, with
+`informational` ones not counted. So `totalNet` is what the patient still
+owes, and `totalGross` is the same amount, since a medical bill carries no
+tax. The billed amount is the `base` component, never a total. An
+`Account`'s balance is not an R4 element: it is the sum of the `totalNet`
+of its Invoices with `status` `issued`.
+
+**Status.** An Invoice is `issued` while the patient owes on it,
+`balanced` at 0, and `cancelled` when the provider voids it.
+
+**Code systems.** This profile names its own code systems under
+`urn:pk-med:`, so no system URI depends on where a repository lives:
+
+| System | Codes |
+|---|---|
+| `urn:pk-med:bill-component` | `billed`, `allowed`, `insurance-payment`, `insurance-adjustment`, `patient-payment`, `patient-responsibility` |
+| `urn:pk-med:doc-type` | `bill` (a statement), `receipt` |
+
+A new code is added here first. A CLI's own systems for the site's numbers
+(an account or bill number) stay the CLI's.
 
 ## 2. FHIR types and client (crate `pk-med-fhir`)
 
