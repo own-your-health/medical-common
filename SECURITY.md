@@ -27,4 +27,4 @@ the records are about. In scope:
   never on argv, in environment variables or in files.
 - Every request goes to `https`, or `http` to this machine for a test
   server; the client sends its bearer only to the FHIR base's origin.
-- CI runs gitleaks and cargo-deny on every pull request.
+- CI runs gitleaks over the whole history, and cargo-deny, on every pull request.
