@@ -30,8 +30,8 @@ own name for one member, and its `patient-labels` capability (§1); v0.6.8
 adds `registration`, what to enter in a vendor's developer form, the
 missing-client error and the client status, one per registration from
 v0.6.9, which moves to cli-common v0.33.4 (§3.8); v0.6.10 moves to
-cli-common v0.33.5 (§5). §3.6 says why no
-portal sign-in is scripted.
+cli-common v0.33.5 (§5); v0.6.11 maps a provider's bills and names their
+code systems (`bill`, §1.10). §3.6 says why no portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -652,19 +652,28 @@ charge, and `totalPriceComponent[]` the bill, with the codes of
 | `informational` | `patient-responsibility` | what the patient still owes |
 
 The bill's components are the site's totals, else the sum of its lines'.
-A bill the site shows without lines is one line of its own.
+A bill the site shows without lines is one line of its own. The
+components are the breakdown the site shows and need not add up: a bill
+still with the insurer shows what was billed and no payment yet.
 
 **Totals.** R4 defines `totalNet` as the invoice total with taxes
-excluded, and `totalGross` with them included. Both are counted after the
-components: `base` less every `deduction` and `discount`, with
-`informational` ones not counted. So `totalNet` is what the patient still
-owes, and `totalGross` is the same amount, since a medical bill carries no
-tax. The billed amount is the `base` component, never a total. An
-`Account`'s balance is not an R4 element: it is the sum of the `totalNet`
-of its Invoices with `status` `issued`.
+excluded, and `totalGross` with them included. The Invoice is the
+patient's bill, so its total is what the patient still owes: the site's
+figure, else the sum of the lines' `patient-responsibility`. `totalGross`
+is the same amount, since a medical bill carries no tax. The billed amount
+is the `base` component, never a total.
 
 **Status.** An Invoice is `issued` while the patient owes on it,
 `balanced` at 0, and `cancelled` when the provider voids it.
+
+**Balance.** R4's `Account` has no balance. A store derives one as the sum
+of `totalNet` over the Account's Invoices that are `issued`. A site may
+stop listing a bill once it is paid or sent elsewhere, and then no later
+stream carries it as `balanced`. So a billing CLI writes every bill the
+site lists in a complete stream without `since`, and an Invoice that a
+later such stream of the same patient and `meta.source` leaves out is one
+the site no longer shows. The store shows it as last seen when the latest
+stream that carried it was pulled, and counts it in no balance.
 
 **Code systems.** This profile names its own code systems under
 `urn:pk-med:`, so no system URI depends on where a repository lives:
@@ -676,6 +685,14 @@ of its Invoices with `status` `issued`.
 
 A new code is added here first. A CLI's own systems for the site's numbers
 (an account or bill number) stay the CLI's.
+
+`pk_med_records::bill` holds both systems and their codes
+(`Component`, with its R4 type, and `DocType`). A producer builds with
+`Component::price_component`, `set_totals` and `DocType::concept`, and a
+store reads with `Component::amount_in` and `DocType::of`, so no CLI spells
+a code of its own. Amounts are `serde_json::Number`s the caller builds: a
+producer keeps the site's spelling with serde_json's `arbitrary_precision`,
+and the module never parses or reformats one.
 
 ## 2. FHIR types and client (crate `pk-med-fhir`)
 
@@ -1465,10 +1482,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }
-pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }
-pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.10" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }
+pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }
+pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1512,3 +1529,4 @@ new URL in one change, with the tag it already pins, a regenerated
 | v0.6.8 | v0.33.2 |
 | v0.6.9 | v0.33.4 |
 | v0.6.10 | v0.33.5 |
+| v0.6.11 | v0.33.5 |

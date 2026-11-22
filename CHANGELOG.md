@@ -1,21 +1,38 @@
 # Changelog
 
-## Unreleased
+## v0.6.11 — 2026-11-22
 
+Pins cli-common v0.33.5, as v0.6.10 does. Additive.
+
+- `pk-med-records`: `bill`, the code systems of DESIGN §1.10 and the
+  builders of an Invoice's amounts.
+  - `COMPONENT_SYSTEM` (`urn:pk-med:bill-component`) and `DOC_TYPE_SYSTEM`
+    (`urn:pk-med:doc-type`).
+  - `Component`: the six codes, each with its R4 component type.
+  - Building: `Component::price_component`, `set_totals` (`totalNet` and
+    `totalGross`, both what the patient still owes) and
+    `DocType::concept`. Reading: `Component::amount_in` and `DocType::of`.
+  - Amounts are `serde_json::Number`s the caller builds, so a producer
+    with `arbitrary_precision` keeps the site's spelling.
 - DESIGN.md §1.10: a provider's bills from its billing site, as
   peryourhealth, flywire and embryooptions map them (from the billing-cli
-  session, accepted by medrec-cli). `Account`, `Invoice` with contained
-  `ChargeItem` lines, `PaymentReconciliation`, and `DocumentReference` with
-  `Binary` for statements and receipts. Two code systems this profile owns:
-  `urn:pk-med:bill-component` and `urn:pk-med:doc-type`. `totalNet` and
-  `totalGross` are R4's totals after deductions, both what the patient
-  still owes. The billed amount is the `base` component.
+  session, accepted by medrec-cli).
+  - Resources: `Account`, `Invoice` with contained `ChargeItem` lines,
+    `PaymentReconciliation`, and `DocumentReference` with `Binary` for
+    statements and receipts.
+  - `totalNet` and `totalGross` are both what the patient still owes. The
+    billed amount is the `base` component.
+  - A store counts no balance from an Invoice that a later complete
+    stream without `since` leaves out, since a site may stop listing a
+    paid bill.
 - The repository moved to `github.com/own-your-health/medical-common`,
   tags and all. `Cargo.toml`'s `repository` and `homepage`, and every
   example in README and DESIGN §5, name the new URL. DESIGN §5: a CLI
   moves every `pk-med-*` to it in one change, with the tag it already
   pins, since Cargo takes the old and new URLs for two sources. Nothing
-  built from these crates names the owner, so no release.
+  built from these crates names the owner.
+- `Cargo.lock`: `url` 2.5.9 for RUSTSEC-2026-0592. A CLI's own lockfile
+  needs `cargo update -p url --precise 2.5.9`.
 - DESIGN.md §1: `--patient` never matches a name the source shows, a
   first name included. A name on the command line stays in shell history
   and in an agent's transcript (from the uhc-cli and caremark-cli
