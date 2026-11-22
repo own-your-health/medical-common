@@ -22,9 +22,10 @@ Pins cli-common v0.33.5, as v0.6.10 does. Additive.
     statements and receipts.
   - `totalNet` and `totalGross` are both what the patient still owes. The
     billed amount is the `base` component.
-  - A store counts no balance from an Invoice that a later complete
-    stream without `since` leaves out, since a site may stop listing a
-    paid bill.
+  - A store counts no balance from an Invoice that a later stream leaves
+    out, since a site may stop listing a paid bill. That stream must be
+    complete with no `since`, carry the Invoice's Account, and have no
+    skip for `Invoice` or `Account`.
 - The repository moved to `github.com/own-your-health/medical-common`,
   tags and all. `Cargo.toml`'s `repository` and `homepage`, and every
   example in README and DESIGN §5, name the new URL. DESIGN §5: a CLI

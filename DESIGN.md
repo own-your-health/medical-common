@@ -670,10 +670,17 @@ is the `base` component, never a total.
 of `totalNet` over the Account's Invoices that are `issued`. A site may
 stop listing a bill once it is paid or sent elsewhere, and then no later
 stream carries it as `balanced`. So a billing CLI writes every bill the
-site lists in a complete stream without `since`, and an Invoice that a
-later such stream of the same patient and `meta.source` leaves out is one
-the site no longer shows. The store shows it as last seen when the latest
-stream that carried it was pulled, and counts it in no balance.
+site lists, with its Account, in a complete stream without `since`, and a
+bill it could not read is a `Skip` (§1.4). An Invoice is one the site no
+longer shows when a later stream leaves it out that:
+- is complete and has no `since`;
+- carries the Invoice's Account (its `account`), since two sign-ins can see
+  one patient through two accounts;
+- has no `Skip` for `Invoice` or `Account`, since a page that failed is a
+  skip in a stream that still completes.
+
+The store shows such an Invoice as last seen when the latest stream that
+carried it was pulled, and counts it in no balance.
 
 **Code systems.** This profile names its own code systems under
 `urn:pk-med:`, so no system URI depends on where a repository lives:
