@@ -31,7 +31,8 @@ adds `registration`, what to enter in a vendor's developer form, the
 missing-client error and the client status, one per registration from
 v0.6.9, which moves to cli-common v0.33.4 (§3.8); v0.6.10 moves to
 cli-common v0.33.5 (§5); v0.6.11 maps a provider's bills and names their
-code systems (`bill`, §1.10). §3.6 says why no portal sign-in is scripted.
+code systems (`bill`, §1.10); v0.6.12 moves to cli-common v0.37.5 (§5).
+§3.6 says why no portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
 cli-common's domain profiles (`documents/v1`, `utility/v1`, cli-common
@@ -1489,10 +1490,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }
-pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }
-pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.11" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }
+pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }
+pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1537,3 +1538,4 @@ new URL in one change, with the tag it already pins, a regenerated
 | v0.6.9 | v0.33.4 |
 | v0.6.10 | v0.33.5 |
 | v0.6.11 | v0.33.5 |
+| v0.6.12 | v0.37.5 |

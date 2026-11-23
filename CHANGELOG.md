@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.6.12 — 2026-11-23
+
+Pins cli-common v0.37.5 (v0.6.11 pinned v0.33.5). No API change here.
+
+- `pk-cli-browser`: a watch window (`Capture::responses`) that ends while
+  no page on the capture's hosts is open now hands over what it kept. That
+  covers a window that runs out during a sign-in on another host, a window
+  the owner closes, and the wait's deadline; before, each dropped
+  everything kept. Leaving the capture's hosts and coming back no longer
+  matters to the window, which starts once. athena-cli's `bills` needs
+  both, and keeps every `pk-cli-*` on medical-common's cli-common tag
+  (DESIGN §5).
+- `pk-cli-core` v0.34.0: `Paged` gains `warnings`, so a struct literal of
+  it no longer compiles. Nothing in medical-common builds one.
+- `pk-cli-auth` v0.36.0 and v0.36.1: `Vault::load_key` takes `&self`;
+  calls on an `Arc<Vault>` are unchanged.
+
+- `Cargo.lock`: `cookie` 0.18.3 (RUSTSEC-2026-0594, a repeated nonce for
+  private cookies after `fork()`), through reqwest's cookie store. A
+  consumer's own lockfile needs `cargo update -p cookie` too.
+
+A CLI that takes v0.6.12 moves every `pk-cli-*` to v0.37.5 with it.
+
 ## v0.6.11 — 2026-11-22
 
 Pins cli-common v0.33.5, as v0.6.10 does. Additive.
