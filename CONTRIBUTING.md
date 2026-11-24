@@ -35,4 +35,4 @@ Bump `workspace.package.version`, update `CHANGELOG.md`, merge, tag
 
 ## Licence of contributions
 
-Dual-licensed MIT OR Apache-2.0, like the project.
+AGPL-3.0-only, like the project.
