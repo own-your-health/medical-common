@@ -1050,8 +1050,9 @@ copy, so moving again after an upgrade keeps it.
 code identity to the keychain at every build, so its first read of the
 vault's key waits on one "Always Allow" dialog, and an unattended run
 started before then waits on a dialog nobody answers. Installs and upgrades
-on this Mac therefore happen only when the user is present, and the first
-run after one is theirs.
+on this Mac therefore happen only when the user is present. The session that
+installed it makes the first run while the user is there to answer the
+dialog, and makes one call only until it is answered.
 
 `MemoryStore` serves tests, and `ProfileSessions` over a vault with
 cli-common's `MemoryKeys` and a temporary directory. Every store is
