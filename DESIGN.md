@@ -1050,8 +1050,14 @@ copy, so moving again after an upgrade keeps it.
 code identity to the keychain at every build, so its first read of the
 vault's key waits on one "Always Allow" dialog, and an unattended run
 started before then waits on a dialog nobody answers. Installs and upgrades
-on this Mac therefore happen only when the user is present, and the first
-run after one is theirs.
+on this Mac therefore happen only when the user is present. The agent
+session that installed it makes the first run while the user is there to
+answer the dialog, and makes no other call until it is answered. That run
+reads the vault's key, such as `<bin> auth status --profile <NAME>` on a
+profile with a stored sign-in: `info`, a cached read or a logged-out profile
+raises no dialog and leaves it to the next unattended run. Its output is
+discarded and only the exit code reported, since an agent's transcript keeps
+what it sees.
 
 `MemoryStore` serves tests, and `ProfileSessions` over a vault with
 cli-common's `MemoryKeys` and a temporary directory. Every store is
