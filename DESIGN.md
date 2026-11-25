@@ -1053,11 +1053,21 @@ started before then waits on a dialog nobody answers. Installs and upgrades
 on this Mac therefore happen only when the user is present. The agent
 session that installed it makes the first run while the user is there to
 answer the dialog, and makes no other call until it is answered. That run
-reads the vault's key, such as `<bin> auth status --profile <NAME>` on a
-profile with a stored sign-in: `info`, a cached read or a logged-out profile
-raises no dialog and leaves it to the next unattended run. Its output is
-discarded and only the exit code reported, since an agent's transcript keeps
-what it sees.
+reads the vault's key. A CLI on cli-common v0.39.0 or later has `<bin> auth
+key` (`auth-key/v1`), which reads the key once and reports whether macOS had
+to ask and whether the answer lasts; on an older one it is a command that
+needs the key, such as `<bin> auth status --profile <NAME>` on a profile with
+a stored sign-in (`info`, a cached read or a logged-out profile raises no
+dialog and leaves it to the next unattended run). Its output is discarded and
+only the exit code reported, since an agent's transcript keeps what it sees.
+
+An unattended run never raises a dialog. A CLI on cli-common v0.39.0 or later
+loads the key there with `Vault::load_key_quietly`, which answers
+`NeedsPerson` instead of raising one; the run stops, does nothing else and
+says so once. `<bin> auth key --no-dialog` answers the same question from a
+shell without raising one. A run that stopped this way is tried again after
+someone has answered, never in a loop: a loop over a call that can raise a
+dialog makes a dialog for each turn.
 
 `MemoryStore` serves tests, and `ProfileSessions` over a vault with
 cli-common's `MemoryKeys` and a temporary directory. Every store is
