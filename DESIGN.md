@@ -31,7 +31,7 @@ adds `registration`, what to enter in a vendor's developer form, the
 missing-client error and the client status, one per registration from
 v0.6.9, which moves to cli-common v0.33.4 (§3.8); v0.6.10 moves to
 cli-common v0.33.5 (§5); v0.6.11 maps a provider's bills and names their
-code systems (`bill`, §1.10); v0.6.12 moves to cli-common v0.37.5 (§5).
+code systems (`bill`, §1.10); v0.6.12 moves to cli-common v0.37.5 and v0.6.13 to v0.39.1 (§5).
 §3.6 says why no portal sign-in is scripted.
 
 This document is the specification of the profile, in the style of
@@ -1075,15 +1075,14 @@ reads the vault's key:
 **Unattended runs.** A run nobody is watching, such as a scheduled refresh,
 raises no dialog. A CLI that has adopted cli-common's `Vault::load_key_quietly`
 (its DESIGN 2.5 says how) goes on only after `Loaded` or `Empty`. On any other
-answer the run does nothing more, says why once, and exits with the code of
-the case it is: 3 for `NeedsPerson`, as `auth key`'s `needs_dialog`; 1 for
-`Missing`, as its lost key; and 1, not 3, for `Unsupported` and any answer it
-does not know, so a script that acts on 3 never asks a person to do what cannot
-end the stop. The message names what ends it: for `NeedsPerson`, unlock the login keychain if it is locked, then run
-`<bin> auth key` at the screen and choose Always Allow; for a lost key, the
-CLI's own way to clear it; for `Unsupported`, a newer build of the CLI. A CLI
-that has not adopted it makes no unattended run after an upgrade until the
-first run at the screen has succeeded.
+answer the run does nothing more, says why once, and returns the error
+`QuietLoad::failure()` gives (cli-common v0.39.1; its DESIGN 2.5 has the exit
+codes and reasons). Its remedy names `auth key`, so a CLI that uses the quiet
+load has that command too. An answer that is exit 3 ends when someone at the
+screen does what its remedy says; one that is exit 1 does not. A script acts
+on the exit code and reason, not on the run having stopped. A CLI that has not
+adopted it makes no unattended run after an upgrade until the first run at the
+screen has succeeded.
 
 A run that stopped is tried again only after its named remedy has been carried
 out (for `NeedsPerson`, after the person has answered at the screen), never in
@@ -1526,10 +1525,10 @@ them at run time.
 Pin a tag, never a branch or a path:
 
 ```toml
-pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }
-pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }
-pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
-pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }   # features = ["test-util"] for §4.6
+pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13" }
+pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13" }
+pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13" }   # features = ["rsa"] for §3.4, ["browser"] for the window (§3.1)
+pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13" }   # features = ["test-util"] for §4.6
 ```
 
 Each medical-common tag pins one cli-common tag for every `pk-cli-*` crate,
@@ -1575,3 +1574,4 @@ new URL in one change, with the tag it already pins, a regenerated
 | v0.6.10 | v0.33.5 |
 | v0.6.11 | v0.33.5 |
 | v0.6.12 | v0.37.5 |
+| v0.6.13 | v0.39.1 |

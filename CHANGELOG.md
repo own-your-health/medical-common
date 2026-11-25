@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.6.13 — 2026-11-24
+
+Pins cli-common v0.39.1 (v0.6.12 pinned v0.37.5). No API change here. First
+release under AGPL-3.0-only; v0.6.12 and earlier keep MIT OR Apache-2.0.
+
+- `pk-cli-auth` v0.39.0: `auth key` (`auth-key/v1`) and
+  `Vault::load_key_quietly`, for a CLI that adds them (DESIGN §3.2).
+- `pk-cli-auth` v0.39.1: `QuietLoad::failure` and `KeyLoad::failure` give each
+  answer its error, so a CLI does not write them itself.
+- `pk-cli-auth` v0.39.0: `KeyStore` gains `get_quiet`, `get_asking` and
+  `keychain_service` with defaults, so a CLI's own store compiles as it is; it
+  forwards the three to say whether macOS asked.
+- `pk-cli-core` v0.39.0: `CliInfo` gains a public `build` field. Code that
+  builds the struct by hand adds `build: None`.
+- `pk-cli-drive` v0.38.1: `ListedItem` gains `parent`. Code that builds it by
+  hand adds it.
+
+A CLI that takes v0.6.13 moves every `pk-cli-*` to v0.39.1 with it, and its
+`deny.toml` allows AGPL-3.0-only.
+
 ## v0.6.12 — 2026-11-23
 
 Pins cli-common v0.37.5 (v0.6.11 pinned v0.33.5). No API change here.

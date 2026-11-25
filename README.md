@@ -23,16 +23,16 @@ but the program that asked.
 
 ```toml
 [dependencies]
-pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }
-pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }
-pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }
-pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12" }
+pk-med-records = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13" }
+pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13" }
+pk-med-smart = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13" }
+pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13" }
 # The same cli-common tag medical-common pins (DESIGN.md §5):
-pk-cli-core = { git = "https://github.com/piekstra/cli-common", tag = "v0.37.5" }
+pk-cli-core = { git = "https://github.com/piekstra/cli-common", tag = "v0.39.1" }
 
 [dev-dependencies]
-pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12", features = ["test-util"] }
-pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.12", features = ["test-util"] }
+pk-med-fhir = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13", features = ["test-util"] }
+pk-med-dicom = { git = "https://github.com/own-your-health/medical-common", tag = "v0.6.13", features = ["test-util"] }
 ```
 
 A pull, in brief:
