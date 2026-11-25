@@ -63,6 +63,7 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 <bin> auth login --profile <NAME> --org <ORG> [--label <WHO>]   # browser sign-in, PKCE, loopback redirect
 <bin> auth status --profile <NAME>                          # auth-status/v1
 <bin> auth logout --profile <NAME>
+<bin> auth key                                              # auth-key/v1 (cli-common v0.39.0 and later, whose DESIGN 1.4 is the contract, flags included; the vault's one key, so no --profile)
 <bin> patients list --profile <NAME>                        # patient-list/v1
 <bin> patients label --profile <NAME> --patient <ID> (<WHO> | --clear)   # the household's own name for one member
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] --ndjson    # records-stream/v1 on stdout
@@ -1053,11 +1054,40 @@ started before then waits on a dialog nobody answers. Installs and upgrades
 on this Mac therefore happen only when the user is present. The agent
 session that installed it makes the first run while the user is there to
 answer the dialog, and makes no other call until it is answered. That run
-reads the vault's key, such as `<bin> auth status --profile <NAME>` on a
-profile with a stored sign-in: `info`, a cached read or a logged-out profile
-raises no dialog and leaves it to the next unattended run. Its output is
-discarded and only the exit code reported, since an agent's transcript keeps
-what it sees.
+reads the vault's key:
+
+- A CLI that has `auth key` (each CLI adds the command itself; cli-common
+  DESIGN 1.4 is the contract) runs `<bin> auth key`. If it exits 0, `<bin>
+  auth key --no-dialog` follows. Exit 0 there means the next read of a stored
+  key raises no dialog, or that nothing is stored; exit 3 means the dialog was
+  answered Allow, so the next read asks again, and the session says so. Any
+  other second exit is the check having failed, and any nonzero first exit the
+  first run having failed: either is reported and nothing follows it, and no
+  unattended run until it is fixed.
+- A CLI without it runs a command that needs the key, such as `<bin> auth
+  status --profile <NAME>` on a profile with a stored sign-in: `info`, a cached
+  read or a logged-out profile raises no dialog and leaves it to the next
+  unattended run. It runs twice while the user is present: a second dialog
+  shows the first was answered Allow, and the user chooses Always Allow then.
+  The output is discarded and only the exit code reported, since an agent's
+  transcript keeps what it sees.
+
+**Unattended runs.** A run nobody is watching, such as a scheduled refresh,
+raises no dialog. A CLI that has adopted cli-common's `Vault::load_key_quietly`
+(its DESIGN 2.5 says how) goes on only after `Loaded` or `Empty`. On any other
+answer the run does nothing more, says why once, and exits with the code of
+the case it is: 3 for `NeedsPerson`, as `auth key`'s `needs_dialog`; 1 for
+`Missing`, as its lost key; and 1, not 3, for `Unsupported` and any answer it
+does not know, so a script that acts on 3 never asks a person to do what cannot
+end the stop. The message names what ends it: for `NeedsPerson`, unlock the login keychain if it is locked, then run
+`<bin> auth key` at the screen and choose Always Allow; for a lost key, the
+CLI's own way to clear it; for `Unsupported`, a newer build of the CLI. A CLI
+that has not adopted it makes no unattended run after an upgrade until the
+first run at the screen has succeeded.
+
+A run that stopped is tried again only after its named remedy has been carried
+out (for `NeedsPerson`, after the person has answered at the screen), never in
+a loop: a loop over a call that can raise a dialog raises one each turn.
 
 `MemoryStore` serves tests, and `ProfileSessions` over a vault with
 cli-common's `MemoryKeys` and a temporary directory. Every store is
