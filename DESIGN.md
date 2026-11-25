@@ -63,6 +63,7 @@ profile in `info` (`profiles: ["health-records/v1", "documents/v1"]`).
 <bin> auth login --profile <NAME> --org <ORG> [--label <WHO>]   # browser sign-in, PKCE, loopback redirect
 <bin> auth status --profile <NAME>                          # auth-status/v1
 <bin> auth logout --profile <NAME>
+<bin> auth key [--no-dialog | --wait <SECONDS>]            # auth-key/v1 (cli-common v0.39.0 and later): the vault's one key, so no --profile (§3.2)
 <bin> patients list --profile <NAME>                        # patient-list/v1
 <bin> patients label --profile <NAME> --patient <ID> (<WHO> | --clear)   # the household's own name for one member
 <bin> records export --profile <NAME> --patient <ID> [--since <YYYY-MM-DD>] --ndjson    # records-stream/v1 on stdout
@@ -1052,22 +1053,49 @@ vault's key waits on one "Always Allow" dialog, and an unattended run
 started before then waits on a dialog nobody answers. Installs and upgrades
 on this Mac therefore happen only when the user is present. The agent
 session that installed it makes the first run while the user is there to
-answer the dialog, and makes no other call until it is answered. That run
-reads the vault's key. A CLI on cli-common v0.39.0 or later has `<bin> auth
-key` (`auth-key/v1`), which reads the key once and reports whether macOS had
-to ask and whether the answer lasts; on an older one it is a command that
-needs the key, such as `<bin> auth status --profile <NAME>` on a profile with
-a stored sign-in (`info`, a cached read or a logged-out profile raises no
-dialog and leaves it to the next unattended run). Its output is discarded and
-only the exit code reported, since an agent's transcript keeps what it sees.
+answer the dialog, and makes no other call until it is answered.
 
-An unattended run never raises a dialog. A CLI on cli-common v0.39.0 or later
-loads the key there with `Vault::load_key_quietly`, which answers
-`NeedsPerson` instead of raising one; the run stops, does nothing else and
-says so once. `<bin> auth key --no-dialog` answers the same question from a
-shell without raising one. A run that stopped this way is tried again after
-someone has answered, never in a loop: a loop over a call that can raise a
-dialog makes a dialog for each turn.
+- A CLI that has `auth key` (cli-common v0.39.0 is the first library that has
+  it; each CLI adds the command itself) makes that run `<bin> auth key`,
+  then `<bin> auth key --no-dialog`, which raises no dialog and must exit 0.
+  Exit 3 from the second means the dialog was answered with Allow and not
+  Always Allow: the next read asks again, so the session tells the user. From
+  `auth key --json` the session may read `outcome`, `dialog_needed` and
+  `grant` and report those; the document has no field for the key.
+- A CLI without it runs a command that needs the key, such as `<bin> auth
+  status --profile <NAME>` on a profile with a stored sign-in: `info`, a cached
+  read or a logged-out profile raises no dialog and leaves it to the next
+  unattended run. The output is discarded and only the exit code reported,
+  since an agent's transcript keeps what it sees.
+
+**Unattended runs.** A run nobody is watching, such as a scheduled refresh,
+raises no dialog in a CLI that has adopted `Vault::load_key_quietly`
+(cli-common v0.39.0). It goes on only after `Loaded` or `Empty`, and stops
+on `NeedsPerson`, `Unsupported`, `Missing` and any answer it does not know
+(the enum is `#[non_exhaustive]`). A `KeyStore` of the CLI's own forwards
+`get_quiet`, `get_asking` and `keychain_service`, as cli-common's
+`conformance.md` requires; without that, the answer is `Unsupported` and
+`auth key --no-dialog` is a usage error (exit 2).
+
+- The stop is exit 3 with reason `credential_unreadable`, once per run: the
+  text on stderr, or the `error` object under `--json`. Its message names the
+  remedy: unlock the login keychain if it is locked, then run `<bin> auth key`
+  at the screen and choose Always Allow. Nothing else tells the user, since a
+  run that stopped raised no dialog.
+- `auth key --no-dialog` and `load_key_quietly` agree about a key that exists.
+  With no key stored and the keychain locked, `auth key --no-dialog` exits 0
+  (`absent`), while `load_key_quietly` answers `NeedsPerson`, since the write
+  that makes the key would ask to unlock it. Only the library speaks for a
+  first write.
+- A CLI on an earlier tag bounds the wait with `Vault::load_key` and
+  `Vault::bound_key_reads` (v0.37.5). Those can still raise a dialog, so the
+  run stops on a timeout, exit 3, and does not retry.
+- A stopped run is tried again after the user has answered at the screen,
+  never in a loop: a loop over a call that can raise a dialog raises one each
+  turn.
+
+A CLI has this only once its cli-common tag and its own wiring include it;
+this repository's pin (§5) must reach v0.39.0 first.
 
 `MemoryStore` serves tests, and `ProfileSessions` over a vault with
 cli-common's `MemoryKeys` and a temporary directory. Every store is
